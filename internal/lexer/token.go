@@ -1,5 +1,7 @@
 package lexer
 
+import "fmt"
+
 type TokenType int
 
 const (
@@ -82,4 +84,8 @@ type Location struct {
 
 	// 0-based
 	Line, Column int
+}
+
+func (l *Location) String() string {
+	return fmt.Sprintf("%s:%d:%d", l.File, l.Line+1, l.Column+1)
 }

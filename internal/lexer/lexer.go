@@ -16,6 +16,24 @@ const (
 	debugPrint        = false
 )
 
+type LexerError struct {
+	Inner    error
+	Location Location
+}
+
+func (e *LexerError) Error() string {
+	return fmt.Sprintf("%s at %s", e.Inner, &e.Location)
+}
+
+type UnexpectedRuneError struct {
+	Got      rune
+	Expected string
+}
+
+func (e *UnexpectedRuneError) Error() string {
+	return fmt.Sprintf("expected %s, found %q", e.Expected, e.Got)
+}
+
 type stateFunc func() stateFunc
 
 type Lexer struct {
@@ -181,12 +199,18 @@ func (l *Lexer) isEmpty() bool {
 }
 
 func (l *Lexer) lexError(err error) stateFunc {
-	l.err = err
+	l.err = &LexerError{
+		Inner:    err,
+		Location: l.strStart,
+	}
 	return nil
 }
 
 func (l *Lexer) lexUnexpected(got rune, expected string) stateFunc {
-	return l.lexError(fmt.Errorf("expected %s, found %q", expected, got))
+	return l.lexError(&UnexpectedRuneError{
+		Got:      got,
+		Expected: expected,
+	})
 }
 
 func (l *Lexer) lexIndentation() stateFunc {
@@ -318,7 +342,7 @@ func (l *Lexer) lexAfterTag() stateFunc {
 		}
 	}
 
-	return nil
+	return l.lexUnexpected(r, "valid tag qualifiers, content or a newline")
 }
 
 func (l *Lexer) lexClassName() stateFunc {
