@@ -229,7 +229,44 @@ func (l *Lexer) lexNewLine() stateFunc {
 	}
 }
 
+func (l *Lexer) lexForcedNewLine() stateFunc {
+	foundSome := false
+
+	for {
+		r, eof := l.take()
+		if eof {
+			return nil
+		}
+
+		if !isNewLine(r) {
+			if !foundSome {
+				return l.lexUnexpected(r, "a new line")
+			}
+
+			l.rewindRune()
+			l.emit(TokenNewLine)
+			return l.lexIndentation
+		}
+
+		foundSome = true
+	}
+}
+
 func (l *Lexer) lexTagName() stateFunc {
+	r, eof := l.take()
+	if eof {
+		return nil
+	}
+	switch r {
+	case interpolationChar:
+		l.emit(TokenAtSign)
+		return l.lexInterpolation(l.lexForcedNewLine)
+
+	case '.':
+		l.discard()
+		return l.lexClassName
+	}
+
 	for {
 		r, eof := l.take()
 		if eof {
@@ -271,7 +308,7 @@ func (l *Lexer) lexAfterTag() stateFunc {
 		return l.lexClassName
 
 	case '#':
-		l.emit(TokenHashTag)
+		l.emit(TokenHashtag)
 		return l.lexID
 
 	default:
@@ -345,22 +382,26 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 				l.emit(TokenTagInlineText)
 			}
 
-			// Skip and discard first interpolation char
+			// Take first interpolation char again
 			l.take()
-			l.discard()
 
-			// Check if the next char if also the interpolation char,
-			// in which case we continue the loop in order to emit it as
-			// a regular inline text
+			// Check if the next char if also the interpolation char
 			r, eof := l.take()
 			if eof {
 				return nil
 			}
 			if r == interpolationChar {
+				// If it is, we rewind back to the first one, discard it, then take
+				// the second one again and continue the loop in order to include it
+				// in the next inline text emit
+				l.rewindRune()
+				l.discard()
+				l.take()
 				continue
 			}
 
 			l.rewindRune()
+			l.emit(TokenAtSign)
 			return l.lexInterpolation(l.lexTagInlineContent)
 		}
 
@@ -442,91 +483,97 @@ func (l *Lexer) lexAfterAttributes() stateFunc {
 }
 
 func (l *Lexer) lexInterpolation(returnTo stateFunc) stateFunc {
-	r, eof := l.take()
-	if eof {
-		return nil
-	}
-
-	if r == '{' {
-		l.emit(TokenBraceOpen)
-		return l.lexInterpolationBlock(returnTo)
-	}
-
-	l.rewindRune()
-	return l.lexInterpolationExpr(returnTo)
-}
-
-func (l *Lexer) lexInterpolationExpr(returnTo stateFunc) stateFunc {
-	r, eof := l.take()
-	if eof {
-		return nil
-	}
-	if r != '_' && !unicode.IsLetter(r) {
-		return l.lexUnexpected(r, "a valid Go identifier first character")
-	}
-
-	for {
+	return func() stateFunc {
 		r, eof := l.take()
 		if eof {
 			return nil
 		}
-		if r != '_' && !unicode.IsLetter(r) && !unicode.IsDigit(r) {
-			l.rewindRune()
-			break
-		}
-	}
 
-	l.emit(TokenGoExpr)
-	return returnTo
+		if r == '{' {
+			l.emit(TokenBraceOpen)
+			return l.lexInterpolationBlock(returnTo)
+		}
+
+		l.rewindRune()
+		return l.lexInterpolationExpr(returnTo)
+	}
+}
+
+func (l *Lexer) lexInterpolationExpr(returnTo stateFunc) stateFunc {
+	return func() stateFunc {
+		r, eof := l.take()
+		if eof {
+			return nil
+		}
+		if r != '_' && !unicode.IsLetter(r) {
+			return l.lexUnexpected(r, "a valid Go identifier first character")
+		}
+
+		for {
+			r, eof := l.take()
+			if eof {
+				return nil
+			}
+			if r != '_' && !unicode.IsLetter(r) && !unicode.IsDigit(r) {
+				l.rewindRune()
+				break
+			}
+		}
+
+		l.emit(TokenGoExpr)
+		return returnTo
+	}
 }
 
 // This function uses the built-in Go token scanner to intelligently find
 // the closing right brace, avoiding things like braces inside strings
 func (l *Lexer) lexInterpolationBlock(returnTo stateFunc) stateFunc {
-	startByteIndex := l.byteIndex
-	textStart := l.file[startByteIndex:]
+	return func() stateFunc {
+		startByteIndex := l.byteIndex
+		textStart := l.file[startByteIndex:]
 
-	var scan scanner.Scanner
+		var scan scanner.Scanner
 
-	fileSet := token.NewFileSet()
-	f := fileSet.AddFile(l.fileName, 1, len(textStart))
+		fileSet := token.NewFileSet()
+		f := fileSet.AddFile(l.fileName, 1, len(textStart))
 
-	scan.Init(f, textStart, func(pos token.Position, msg string) {}, 0)
+		scan.Init(f, textStart, func(pos token.Position, msg string) {}, 0)
 
-	bracesCount := 1
-	var rbracePos int
+		bracesCount := 1
+		var rbracePos int
 
-loop:
-	for {
-		pos, tok, _ := scan.Scan()
+	loop:
+		for {
+			pos, tok, _ := scan.Scan()
 
-		switch tok {
-		case token.LBRACE:
-			bracesCount++
+			switch tok {
+			case token.LBRACE:
+				bracesCount++
 
-		case token.RBRACE:
-			bracesCount--
-			if bracesCount == 0 {
-				rbracePos = int(pos) - f.Base()
-				break loop
+			case token.RBRACE:
+				bracesCount--
+				if bracesCount == 0 {
+					rbracePos = int(pos) - f.Base()
+					break loop
+				}
+
+			case token.EOF:
+				return l.lexError(errors.New("cannot find expression end brace"))
 			}
-
-		case token.EOF:
-			return l.lexError(errors.New("cannot find expression end brace"))
 		}
-	}
 
-	for l.byteIndex < startByteIndex+rbracePos {
-		l.take()
-	}
-	l.emit(TokenGoExpr)
+		for l.byteIndex < startByteIndex+rbracePos {
+			l.take()
+		}
+		l.emit(TokenGoExpr)
 
-	if !l.takeRune('}') {
-		return nil
-	}
-	l.emit(TokenBraceClose)
+		if !l.takeRune('}') {
+			return nil
+		}
+		l.emit(TokenBraceClose)
 
-	return returnTo
+		return returnTo
+	}
 }
 
 func isASCIILetter(r rune) bool {

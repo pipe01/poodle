@@ -9,8 +9,7 @@ import (
 
 func main() {
 	l := lexer.New([]byte(`
-div nice @my_var asd
-	what
+.test(id="nice") hello
 `), "myfile.poo")
 
 	for {
@@ -19,6 +18,6 @@ div nice @my_var asd
 			log.Fatalf("failed to get token: %s", err)
 		}
 
-		fmt.Printf("%#v\n", *t)
+		fmt.Printf("% 20s %#v\n", t.Type.String(), *t)
 	}
 }

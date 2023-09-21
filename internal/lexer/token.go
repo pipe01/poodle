@@ -14,7 +14,8 @@ const (
 
 	TokenEquals
 	TokenDot
-	TokenHashTag
+	TokenHashtag
+	TokenAtSign
 
 	TokenClassName
 	TokenID
@@ -23,9 +24,51 @@ const (
 	TokenQuotedString
 
 	TokenGoExpr
-
-	TokenEOF
 )
+
+func (t TokenType) String() string {
+	switch t {
+	case TokenTagName:
+		return "Tag name"
+	case TokenNewLine:
+		return "\\n"
+	case TokenTagInlineText:
+		return "Inline text"
+
+	case TokenParenOpen:
+		return "Parentheses open"
+	case TokenParenClose:
+		return "Parentheses close"
+	case TokenBraceOpen:
+		return "Brace open"
+	case TokenBraceClose:
+		return "Brace close"
+
+	case TokenEquals:
+		return "Equals"
+	case TokenDot:
+		return "Dot"
+	case TokenHashtag:
+		return "Hashtag"
+	case TokenAtSign:
+		return "At sign"
+
+	case TokenClassName:
+		return "Class name"
+	case TokenID:
+		return "ID"
+
+	case TokenAttributeName:
+		return "Attribute name"
+	case TokenQuotedString:
+		return "ID"
+
+	case TokenGoExpr:
+		return "Quoted string"
+	}
+
+	return "<unknown>"
+}
 
 type Token struct {
 	Type     TokenType
