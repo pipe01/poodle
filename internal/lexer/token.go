@@ -9,6 +9,9 @@ const (
 
 	TokenParenOpen
 	TokenParenClose
+	TokenBraceOpen
+	TokenBraceClose
+
 	TokenEquals
 	TokenDot
 	TokenHashTag
@@ -18,6 +21,8 @@ const (
 
 	TokenAttributeName
 	TokenQuotedString
+
+	TokenGoExpr
 
 	TokenEOF
 )

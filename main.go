@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/pipe01/poodle/lexer"
+	"github.com/pipe01/poodle/internal/lexer"
 )
 
 func main() {
-	l := lexer.New([]byte(`hello.class-hello.my-class#asd(id="hello") Nice
-	what.nice Cock
+	l := lexer.New([]byte(`
+div nice @my_var asd
+	what
 `), "myfile.poo")
 
 	for {
