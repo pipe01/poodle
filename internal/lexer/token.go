@@ -26,6 +26,8 @@ const (
 	TokenQuotedString
 
 	TokenGoExpr
+
+	TokenEOF
 )
 
 func (t TokenType) String() string {
@@ -33,7 +35,7 @@ func (t TokenType) String() string {
 	case TokenTagName:
 		return "Tag name"
 	case TokenNewLine:
-		return "\\n"
+		return "Newline"
 	case TokenTagInlineText:
 		return "Inline text"
 
@@ -67,6 +69,9 @@ func (t TokenType) String() string {
 
 	case TokenGoExpr:
 		return "Quoted string"
+
+	case TokenEOF:
+		return "EOF"
 	}
 
 	return "<unknown>"

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"go/scanner"
 	"go/token"
-	"io"
 	"unicode"
 )
 
@@ -52,11 +51,11 @@ type Lexer struct {
 	lastRuneSize         int
 	depth                int
 
-	err error
+	err *LexerError
 }
 
 func New(file []byte, fileName string) *Lexer {
-	tks := make(chan Token)
+	tks := make(chan Token, 1)
 
 	lexer := &Lexer{
 		tokens:   tks,
@@ -81,7 +80,14 @@ func New(file []byte, fileName string) *Lexer {
 			}
 		}
 
-		lexer.err = io.EOF
+		tks <- Token{
+			Type: TokenEOF,
+			Start: Location{
+				File:   lexer.fileName,
+				Line:   lexer.line,
+				Column: lexer.col + 1,
+			},
+		}
 	}()
 
 	return lexer
@@ -199,11 +205,13 @@ func (l *Lexer) isEmpty() bool {
 }
 
 func (l *Lexer) lexError(err error) stateFunc {
-	l.err = &LexerError{
-		Inner:    err,
-		Location: l.strStart,
+	return func() stateFunc {
+		l.err = &LexerError{
+			Inner:    err,
+			Location: l.strStart,
+		}
+		return nil
 	}
-	return nil
 }
 
 func (l *Lexer) lexUnexpected(got rune, expected string) stateFunc {
@@ -561,7 +569,21 @@ func (l *Lexer) lexInterpolationBlock(returnTo stateFunc) stateFunc {
 		fileSet := token.NewFileSet()
 		f := fileSet.AddFile(l.fileName, 1, len(textStart))
 
-		scan.Init(f, textStart, func(pos token.Position, msg string) {}, 0)
+		scan.Init(f, textStart, func(pos token.Position, msg string) {
+			col := pos.Column - 1
+			if pos.Line == 1 {
+				col += l.col
+			}
+
+			l.err = &LexerError{
+				Inner: fmt.Errorf("scan Go code: %s", msg),
+				Location: Location{
+					File:   l.fileName,
+					Line:   l.line + pos.Line - 1,
+					Column: col,
+				},
+			}
+		}, 0)
 
 		bracesCount := 1
 		var rbracePos int
