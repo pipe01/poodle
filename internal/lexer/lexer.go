@@ -188,7 +188,7 @@ func (l *Lexer) skipWhitespace() {
 	for {
 		r, eof := l.take()
 		if eof {
-			break
+			return
 		}
 
 		switch r {
@@ -241,7 +241,7 @@ func (l *Lexer) lexIndentation() stateFunc {
 		default:
 			l.rewindRune()
 			l.discard()
-			return l.lexTagName
+			return l.lexLineStart
 		}
 	}
 }
@@ -284,7 +284,7 @@ func (l *Lexer) lexForcedNewLine() stateFunc {
 	}
 }
 
-func (l *Lexer) lexTagName() stateFunc {
+func (l *Lexer) lexLineStart() stateFunc {
 	r, eof := l.take()
 	if eof {
 		return nil
@@ -294,9 +294,17 @@ func (l *Lexer) lexTagName() stateFunc {
 		l.emit(TokenAtSign)
 		return l.lexInterpolation(l.lexForcedNewLine)
 
-	case '.':
-		l.discard()
+	case '.': // Shortcut div with class
+		l.emit(TokenDot)
 		return l.lexClassName
+
+	case '#': // Shortcut div with ID
+		l.emit(TokenHashtag)
+		return l.lexID
+
+	case '|':
+		l.emit(TokenPipe)
+		return l.lexWhitespacedInlineContent
 	}
 
 	for {
@@ -328,8 +336,8 @@ func (l *Lexer) lexAfterTag() stateFunc {
 
 	switch r {
 	case ' ':
-		l.discard()
-		return l.lexTagInlineContent
+		l.rewindRune()
+		return l.lexWhitespacedInlineContent
 
 	case '(':
 		l.emit(TokenParenOpen)
@@ -620,6 +628,18 @@ func (l *Lexer) lexInterpolationBlock(returnTo stateFunc) stateFunc {
 
 		return returnTo
 	}
+}
+
+func (l *Lexer) lexWhitespacedInlineContent() stateFunc {
+	r, eof := l.take()
+	if eof {
+		return nil
+	}
+	if r == ' ' {
+		l.discard()
+	}
+
+	return l.lexTagInlineContent
 }
 
 func isASCIILetter(r rune) bool {

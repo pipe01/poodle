@@ -7,6 +7,7 @@ type TokenType int
 const (
 	TokenTagName TokenType = iota
 	TokenNewLine
+	TokenWhitespace
 	TokenTagInlineText
 
 	TokenParenOpen
@@ -18,6 +19,7 @@ const (
 	TokenDot
 	TokenHashtag
 	TokenAtSign
+	TokenPipe
 
 	TokenClassName
 	TokenID
@@ -36,6 +38,8 @@ func (t TokenType) String() string {
 		return "Tag name"
 	case TokenNewLine:
 		return "Newline"
+	case TokenWhitespace:
+		return "Whitespace"
 	case TokenTagInlineText:
 		return "Inline text"
 
@@ -56,6 +60,8 @@ func (t TokenType) String() string {
 		return "Hashtag"
 	case TokenAtSign:
 		return "At sign"
+	case TokenPipe:
+		return "Pipe"
 
 	case TokenClassName:
 		return "Class name"
