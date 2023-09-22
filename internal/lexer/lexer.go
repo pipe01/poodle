@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go/scanner"
 	"go/token"
 	"unicode"
 )
@@ -36,7 +35,7 @@ func (e *UnexpectedRuneError) Error() string {
 type stateFunc func() stateFunc
 
 type Lexer struct {
-	fileName string
+	filename string
 	file     []byte
 
 	tokens chan Token
@@ -60,7 +59,7 @@ func New(file []byte, fileName string) *Lexer {
 	lexer := &Lexer{
 		tokens:   tks,
 		file:     file,
-		fileName: fileName,
+		filename: fileName,
 		r:        bufio.NewReader(bytes.NewReader(file)),
 		str:      make([]rune, 0, 200),
 		strStart: Location{
@@ -83,7 +82,7 @@ func New(file []byte, fileName string) *Lexer {
 		tks <- Token{
 			Type: TokenEOF,
 			Start: Location{
-				File:   lexer.fileName,
+				File:   lexer.filename,
 				Line:   lexer.line,
 				Column: lexer.col + 1,
 			},
@@ -177,7 +176,7 @@ func (l *Lexer) emit(typ TokenType) {
 
 func (l *Lexer) discard() {
 	l.strStart = Location{
-		File:   l.fileName,
+		File:   l.filename,
 		Line:   l.line,
 		Column: l.col,
 	}
@@ -542,28 +541,7 @@ func (l *Lexer) lexInterpolation(returnTo stateFunc) stateFunc {
 func (l *Lexer) lexInterpolationExpr(returnTo stateFunc) stateFunc {
 	return func() stateFunc {
 		startByteIndex := l.byteIndex
-		textStart := l.file[startByteIndex:]
-
-		var scan scanner.Scanner
-
-		fileSet := token.NewFileSet()
-		f := fileSet.AddFile(l.fileName, 1, len(textStart))
-
-		scan.Init(f, textStart, func(pos token.Position, msg string) {
-			col := pos.Column - 1
-			if pos.Line == 1 {
-				col += l.col
-			}
-
-			l.err = &LexerError{
-				Inner: fmt.Errorf("scan Go code: %s", msg),
-				Location: Location{
-					File:   l.fileName,
-					Line:   l.line + pos.Line - 1,
-					Column: col,
-				},
-			}
-		}, 0)
+		scan, f := l.setupGoScanner()
 
 		var parenCount int
 		var endPos int
@@ -616,28 +594,7 @@ func (l *Lexer) lexInterpolationExpr(returnTo stateFunc) stateFunc {
 func (l *Lexer) lexInterpolationBlock(returnTo stateFunc) stateFunc {
 	return func() stateFunc {
 		startByteIndex := l.byteIndex
-		textStart := l.file[startByteIndex:]
-
-		var scan scanner.Scanner
-
-		fileSet := token.NewFileSet()
-		f := fileSet.AddFile(l.fileName, 1, len(textStart))
-
-		scan.Init(f, textStart, func(pos token.Position, msg string) {
-			col := pos.Column - 1
-			if pos.Line == 1 {
-				col += l.col
-			}
-
-			l.err = &LexerError{
-				Inner: fmt.Errorf("scan Go code: %s", msg),
-				Location: Location{
-					File:   l.fileName,
-					Line:   l.line + pos.Line - 1,
-					Column: col,
-				},
-			}
-		}, 0)
+		scan, f := l.setupGoScanner()
 
 		bracesCount := 1
 		var rbracePos int
