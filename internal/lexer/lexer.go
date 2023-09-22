@@ -290,7 +290,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 	}
 	switch r {
 	case interpolationChar:
-		l.emit(TokenAtSign)
+		l.emit(TokenInterpolationStart)
 		return l.lexInterpolation(l.lexForcedNewLine)
 
 	case '.': // Shortcut div with class
@@ -470,7 +470,7 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 			}
 
 			l.rewindRune()
-			l.emit(TokenAtSign)
+			l.emit(TokenInterpolationStart)
 			return l.lexInterpolation(l.lexTagInlineContent)
 		}
 

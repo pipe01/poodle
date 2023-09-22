@@ -18,7 +18,7 @@ const (
 	TokenEquals
 	TokenDot
 	TokenHashtag
-	TokenAtSign
+	TokenInterpolationStart
 	TokenPipe
 
 	TokenCommentStart
@@ -61,8 +61,8 @@ func (t TokenType) String() string {
 		return "Dot"
 	case TokenHashtag:
 		return "Hashtag"
-	case TokenAtSign:
-		return "At sign"
+	case TokenInterpolationStart:
+		return "Interpolation start"
 	case TokenPipe:
 		return "Pipe"
 
