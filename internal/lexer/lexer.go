@@ -573,9 +573,11 @@ func (l *Lexer) lexInterpolationExpr(returnTo stateFunc) stateFunc {
 				}
 
 			case token.EOF:
-				return l.lexError(errors.New("cannot find expression end brace"))
+				if parenCount != 0 {
+					return l.lexError(errors.New("unfinished Go expression"))
+				}
+				break loop
 			}
-
 		}
 
 		endIndex := int(endPos) - f.Base()
