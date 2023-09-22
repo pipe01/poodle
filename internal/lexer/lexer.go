@@ -304,6 +304,19 @@ func (l *Lexer) lexLineStart() stateFunc {
 	case '|':
 		l.emit(TokenPipe)
 		return l.lexWhitespacedInlineContent
+
+	case '/':
+		r, eof = l.take()
+		if eof {
+			return nil
+		}
+
+		if r != '/' {
+			return l.lexUnexpected(r, "'/'")
+		}
+
+		l.emit(TokenCommentStart)
+		return l.lexComment
 	}
 
 	for {
@@ -325,6 +338,23 @@ func (l *Lexer) lexLineStart() stateFunc {
 
 	l.emit(TokenTagName)
 	return l.lexAfterTag
+}
+
+func (l *Lexer) lexComment() stateFunc {
+	for {
+		r, eof := l.take()
+		if eof {
+			return nil
+		}
+
+		if r == '\n' {
+			l.rewindRune()
+			l.emit(TokenCommentText)
+			l.take()
+
+			return l.lexIndentation
+		}
+	}
 }
 
 func (l *Lexer) lexAfterTag() stateFunc {

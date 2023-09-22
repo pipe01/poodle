@@ -21,6 +21,9 @@ const (
 	TokenAtSign
 	TokenPipe
 
+	TokenCommentStart
+	TokenCommentText
+
 	TokenClassName
 	TokenID
 
@@ -62,6 +65,11 @@ func (t TokenType) String() string {
 		return "At sign"
 	case TokenPipe:
 		return "Pipe"
+
+	case TokenCommentStart:
+		return "Comment start"
+	case TokenCommentText:
+		return "Comment text"
 
 	case TokenClassName:
 		return "Class name"
