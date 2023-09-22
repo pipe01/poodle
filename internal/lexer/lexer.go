@@ -101,6 +101,24 @@ func (l *Lexer) Next() (*Token, error) {
 	return &t, nil
 }
 
+func (l *Lexer) Collect() ([]Token, error) {
+	tks := []Token{}
+
+	for t := range l.tokens {
+		tks = append(tks, t)
+
+		if t.Type == TokenEOF {
+			break
+		}
+	}
+
+	if l.err != nil {
+		return nil, l.err
+	}
+
+	return tks, nil
+}
+
 func (l *Lexer) take() (r rune, eof bool) {
 	r, size, err := l.r.ReadRune()
 	if err != nil {
