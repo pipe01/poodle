@@ -8,6 +8,8 @@ import (
 	"github.com/pipe01/poodle/internal/lexer"
 )
 
+var ErrLastTokenEOF = errors.New("last token must be EOF")
+
 type ParserError struct {
 	Inner    error
 	Location lexer.Location
@@ -23,7 +25,7 @@ type UnexpectedTokenError struct {
 }
 
 func (e *UnexpectedTokenError) Error() string {
-	return fmt.Sprintf("expected %q, found %q", e.Expected, e.Got)
+	return fmt.Sprintf("expected %s, found %q", e.Expected, e.Got)
 }
 
 type parser struct {
@@ -39,10 +41,15 @@ func Parse(tokens []lexer.Token) (*File, error) {
 	}
 
 	if tokens[len(tokens)-1].Type != lexer.TokenEOF {
-		return nil, errors.New("last token must be EOF")
+		return nil, ErrLastTokenEOF
 	}
 
-	return p.parseFile(), nil
+	f := p.parseFile()
+	if len(p.errs) > 0 {
+		return nil, p.errs[0]
+	}
+
+	return f, nil
 }
 
 func (p *parser) take() (tk *lexer.Token) {
@@ -132,10 +139,9 @@ loop:
 
 		switch tk.Type {
 		case lexer.TokenDot:
-			tk := p.take()
-
-			if tk.Type != lexer.TokenClassName {
-				panic("invalid")
+			tk, ok := p.mustTake(lexer.TokenClassName)
+			if !ok {
+				continue
 			}
 
 			classes = append(classes, tk.Contents)
@@ -145,6 +151,9 @@ loop:
 
 		case lexer.TokenParenOpen:
 			tagNode.Attributes = p.parseTagAttributes()
+
+		case lexer.TokenEOF:
+			break loop
 		}
 	}
 
