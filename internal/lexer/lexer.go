@@ -541,26 +541,72 @@ func (l *Lexer) lexInterpolation(returnTo stateFunc) stateFunc {
 
 func (l *Lexer) lexInterpolationExpr(returnTo stateFunc) stateFunc {
 	return func() stateFunc {
-		r, eof := l.take()
-		if eof {
-			return nil
-		}
-		if r != '_' && !unicode.IsLetter(r) {
-			return l.lexUnexpected(r, "a valid Go identifier first character")
-		}
+		startByteIndex := l.byteIndex
+		textStart := l.file[startByteIndex:]
 
+		var scan scanner.Scanner
+
+		fileSet := token.NewFileSet()
+		f := fileSet.AddFile(l.fileName, 1, len(textStart))
+
+		scan.Init(f, textStart, func(pos token.Position, msg string) {
+			col := pos.Column - 1
+			if pos.Line == 1 {
+				col += l.col
+			}
+
+			l.err = &LexerError{
+				Inner: fmt.Errorf("scan Go code: %s", msg),
+				Location: Location{
+					File:   l.fileName,
+					Line:   l.line + pos.Line - 1,
+					Column: col,
+				},
+			}
+		}, 0)
+
+		var parenCount int
+		var endPos int
+		startsIdent := false
+
+	loop:
 		for {
-			r, eof := l.take()
-			if eof {
-				return nil
+			pos, tok, lit := scan.Scan()
+
+			switch tok {
+			case token.IDENT:
+				if parenCount == 0 {
+					if startsIdent {
+						break loop
+					}
+
+					startsIdent = true
+					endPos = int(pos) + len(lit)
+				}
+
+			case token.LPAREN:
+				parenCount++
+			case token.RPAREN:
+				parenCount--
+
+				if parenCount == 0 {
+					endPos = int(pos) + 1
+					break loop
+				}
+
+			case token.EOF:
+				return l.lexError(errors.New("cannot find expression end brace"))
 			}
-			if r != '_' && !unicode.IsLetter(r) && !unicode.IsDigit(r) {
-				l.rewindRune()
-				break
-			}
+
 		}
 
+		endIndex := int(endPos) - f.Base()
+
+		for l.byteIndex < startByteIndex+endIndex {
+			l.take()
+		}
 		l.emit(TokenGoExpr)
+
 		return returnTo
 	}
 }

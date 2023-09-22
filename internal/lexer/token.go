@@ -71,10 +71,10 @@ func (t TokenType) String() string {
 	case TokenAttributeName:
 		return "Attribute name"
 	case TokenQuotedString:
-		return "ID"
+		return "Quoted string"
 
 	case TokenGoExpr:
-		return "Quoted string"
+		return "Go expression"
 
 	case TokenEOF:
 		return "EOF"
