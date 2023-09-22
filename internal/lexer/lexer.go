@@ -101,7 +101,7 @@ func (l *Lexer) Next() (*Token, error) {
 	return &t, nil
 }
 
-func (l *Lexer) take() (rune, bool) {
+func (l *Lexer) take() (r rune, eof bool) {
 	r, size, err := l.r.ReadRune()
 	if err != nil {
 		return 0, true
@@ -127,7 +127,7 @@ func (l *Lexer) take() (rune, bool) {
 	return r, false
 }
 
-func (l *Lexer) takeRune(exp rune) bool {
+func (l *Lexer) takeRune(exp rune) (taken bool) {
 	r, eof := l.take()
 	if eof {
 		return false
@@ -138,6 +138,58 @@ func (l *Lexer) takeRune(exp rune) bool {
 	}
 
 	return true
+}
+
+func (l *Lexer) takeMany(n int) (eof bool) {
+	for i := 0; i < n; i++ {
+		_, eof = l.take()
+		if eof {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (l *Lexer) takeUntilByteIndex(n int) (eof bool) {
+	for l.byteIndex < n {
+		_, eof = l.take()
+		if eof {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (l *Lexer) takeWhitespace() {
+	for {
+		r, eof := l.take()
+		if eof {
+			return
+		}
+
+		switch r {
+		case ' ', '\t':
+		default:
+			l.rewindRune()
+			return
+		}
+	}
+}
+
+func (l *Lexer) takeUntilNewline() {
+	for {
+		r, eof := l.take()
+		if eof {
+			return
+		}
+
+		if r == '\n' {
+			l.rewindRune()
+			return
+		}
+	}
 }
 
 func (l *Lexer) rewindRune() {
@@ -181,22 +233,6 @@ func (l *Lexer) discard() {
 		Column: l.col,
 	}
 	l.str = l.str[:0]
-}
-
-func (l *Lexer) skipWhitespace() {
-	for {
-		r, eof := l.take()
-		if eof {
-			return
-		}
-
-		switch r {
-		case ' ', '\t':
-		default:
-			l.rewindRune()
-			return
-		}
-	}
 }
 
 func (l *Lexer) isEmpty() bool {
@@ -485,7 +521,7 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 }
 
 func (l *Lexer) lexAttributeName() stateFunc {
-	l.skipWhitespace()
+	l.takeWhitespace()
 	l.discard()
 
 	for {
@@ -508,7 +544,7 @@ func (l *Lexer) lexAttributeName() stateFunc {
 }
 
 func (l *Lexer) lexAttributeEqual() stateFunc {
-	l.skipWhitespace()
+	l.takeWhitespace()
 	l.discard()
 
 	if !l.takeRune('=') {
@@ -520,7 +556,7 @@ func (l *Lexer) lexAttributeEqual() stateFunc {
 }
 
 func (l *Lexer) lexAttributeValue() stateFunc {
-	l.skipWhitespace()
+	l.takeWhitespace()
 	l.discard()
 
 	if !l.takeRune('"') {
@@ -564,11 +600,11 @@ func (l *Lexer) lexInterpolation(returnTo stateFunc) stateFunc {
 		}
 
 		l.rewindRune()
-		return l.lexInterpolationExpr(returnTo)
+		return l.lexInterpolationInline(returnTo)
 	}
 }
 
-func (l *Lexer) lexInterpolationExpr(returnTo stateFunc) stateFunc {
+func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
 	return func() stateFunc {
 		startByteIndex := l.byteIndex
 		scan, f := l.setupGoScanner()
@@ -580,6 +616,28 @@ func (l *Lexer) lexInterpolationExpr(returnTo stateFunc) stateFunc {
 	loop:
 		for {
 			pos, tok, lit := scan.Scan()
+
+			if pos == 1 {
+				switch tok {
+				// If the first token is "if" or "for", emit the corresponding start token
+				// and take the rest of the line as the expression after that statement
+				case token.IF, token.FOR:
+					l.takeUntilByteIndex(startByteIndex + len(lit))
+
+					if tok == token.IF {
+						l.emit(TokenStartIf)
+					} else {
+						l.emit(TokenStartFor)
+					}
+
+					l.takeWhitespace()
+					l.discard()
+
+					l.takeUntilNewline()
+					l.emit(TokenGoExpr)
+					return returnTo
+				}
+			}
 
 			switch tok {
 			case token.IDENT:
