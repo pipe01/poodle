@@ -11,6 +11,7 @@ func (p pos) Position() lexer.Location {
 }
 
 type File struct {
+	Name  string
 	Nodes []Node
 }
 
@@ -36,6 +37,7 @@ type TagAttribute struct {
 
 type Value interface {
 	Node
+	value()
 }
 
 type ValueLiteral struct {
@@ -43,12 +45,18 @@ type ValueLiteral struct {
 	Contents string
 }
 
+func (ValueLiteral) value() {}
+
 type ValueGoExpr struct {
 	pos
 	Contents string
 }
 
+func (ValueGoExpr) value() {}
+
 type ValueConcat struct {
 	pos
-	Values []Value
+	A, B Value
 }
+
+func (ValueConcat) value() {}

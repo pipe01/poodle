@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/pipe01/poodle/internal/lexer"
@@ -105,7 +106,11 @@ func (p *parser) addError(err error) {
 }
 
 func (p *parser) parseFile() *File {
-	f := File{}
+	fname := p.tokens[0].Start.File
+
+	f := File{
+		Name: strings.TrimSuffix(fname, filepath.Ext(fname)),
+	}
 
 	for !p.isEOF() {
 		node := p.parseTopLevelNode()
@@ -216,12 +221,24 @@ loop:
 	}
 
 	if len(classes) > 0 {
-		tagNode.Attributes = append(tagNode.Attributes, TagAttribute{
-			Name: "class",
-			Value: ValueLiteral{
-				Contents: strings.Join(classes, " "),
-			},
+		classAttrIdx := slices.IndexFunc(tagNode.Attributes, func(e TagAttribute) bool {
+			return e.Name == "class"
 		})
+		joined := strings.Join(classes, " ")
+
+		if classAttrIdx < 0 {
+			tagNode.Attributes = append(tagNode.Attributes, TagAttribute{
+				Name: "class",
+				Value: ValueLiteral{
+					Contents: joined,
+				},
+			})
+		} else {
+			attr := &tagNode.Attributes[classAttrIdx]
+			attr.Value = concatValues(attr.Value, ValueLiteral{
+				Contents: " " + joined,
+			})
+		}
 	}
 
 	if idTok != nil {
@@ -281,7 +298,7 @@ func (p *parser) parseTagAttributes() []TagAttribute {
 }
 
 func (p *parser) parseAttributeValue() Value {
-	values := make([]Value, 0, 1)
+	var val Value
 
 loop:
 	for {
@@ -289,19 +306,19 @@ loop:
 
 		switch tk.Type {
 		case lexer.TokenQuotedString:
-			values = append(values, ValueLiteral{
+			val = concatValues(val, ValueLiteral{
 				pos:      pos(tk.Start),
-				Contents: tk.Contents,
+				Contents: strings.TrimPrefix(strings.TrimSuffix(tk.Contents, `"`), `"`),
 			})
 
 		case lexer.TokenGoExpr:
-			values = append(values, ValueGoExpr{
+			val = concatValues(val, ValueGoExpr{
 				pos:      pos(tk.Start),
 				Contents: tk.Contents,
 			})
 
 		default:
-			if len(values) == 0 {
+			if val == nil {
 				p.addError(&UnexpectedTokenError{
 					Got:      tk.Contents,
 					Expected: "an attribute value",
@@ -313,18 +330,11 @@ loop:
 		}
 	}
 
-	if len(values) == 1 {
-		return values[0]
-	}
-
-	return ValueConcat{
-		pos:    pos(values[0].Position()),
-		Values: values,
-	}
+	return val
 }
 
 func (p *parser) parseInlineValue() Value {
-	values := make([]Value, 0, 1)
+	var val Value
 
 loop:
 	for {
@@ -332,7 +342,7 @@ loop:
 
 		switch tk.Type {
 		case lexer.TokenTagInlineText:
-			values = append(values, ValueLiteral{
+			val = concatValues(val, ValueLiteral{
 				pos:      pos(tk.Start),
 				Contents: tk.Contents,
 			})
@@ -343,13 +353,13 @@ loop:
 				continue
 			}
 
-			values = append(values, ValueGoExpr{
+			val = concatValues(val, ValueGoExpr{
 				pos:      pos(tk.Start),
 				Contents: tk.Contents,
 			})
 
 		default:
-			if len(values) == 0 {
+			if val == nil {
 				p.addError(&UnexpectedTokenError{
 					Got:      tk.Contents,
 					Expected: "an inline value",
@@ -361,15 +371,20 @@ loop:
 		}
 	}
 
-	if len(values) == 0 {
-		return nil
+	return val
+}
+
+func concatValues(a, b Value) Value {
+	if a == nil {
+		return b
 	}
-	if len(values) == 1 {
-		return values[0]
+	if b == nil {
+		return a
 	}
 
 	return ValueConcat{
-		pos:    pos(values[0].Position()),
-		Values: values,
+		pos: pos(a.Position()),
+		A:   a,
+		B:   b,
 	}
 }
