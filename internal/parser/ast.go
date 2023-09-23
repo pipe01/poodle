@@ -23,7 +23,8 @@ type NodeTag struct {
 
 	Name       string
 	Attributes []TagAttribute
-	Body       []Value
+	TextLines  []Value
+	Nodes      []Node
 }
 
 type TagAttribute struct {
@@ -33,9 +34,21 @@ type TagAttribute struct {
 	Value Value
 }
 
-type Value struct {
-	pos
+type Value interface {
+	Node
+}
 
-	Contents       string
-	IsGoExpression bool
+type ValueLiteral struct {
+	pos
+	Contents string
+}
+
+type ValueGoExpr struct {
+	pos
+	Contents string
+}
+
+type ValueConcat struct {
+	pos
+	Values []Value
 }

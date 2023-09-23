@@ -58,7 +58,7 @@ func Parse(tokens []lexer.Token) (*File, error) {
 }
 
 func (p *parser) take() (tk *lexer.Token) {
-	if p.index >= len(p.tokens)-1 {
+	if p.index >= len(p.tokens) {
 		return &p.tokens[len(p.tokens)-1] // Last token should be EOF
 	}
 
@@ -123,11 +123,11 @@ func (p *parser) parseTopLevelNode() Node {
 
 	switch tk.Type {
 	case lexer.TokenTagName:
-		return p.parseTag(tk.Start, tk.Contents)
+		return p.parseTag(tk.Depth, tk.Start, tk.Contents)
 
 	case lexer.TokenDot, lexer.TokenHashtag:
 		p.rewind()
-		return p.parseTag(tk.Start, "div")
+		return p.parseTag(tk.Depth, tk.Start, "div")
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{
@@ -137,7 +137,7 @@ func (p *parser) parseTopLevelNode() Node {
 	return nil
 }
 
-func (p *parser) parseTag(start lexer.Location, name string) *NodeTag {
+func (p *parser) parseTag(depth int, start lexer.Location, name string) *NodeTag {
 	tagNode := NodeTag{
 		pos:  pos(start),
 		Name: name,
@@ -172,13 +172,53 @@ loop:
 
 		case lexer.TokenNewLine, lexer.TokenEOF:
 			break loop
+
+		default:
+			p.rewind()
+
+			v := p.parseInlineValue()
+			if v != nil {
+				tagNode.TextLines = []Value{v}
+			}
+		}
+	}
+
+	// Parse child nodes and text
+	for {
+		tk := p.take()
+		if tk.Depth > depth+1 {
+			p.addErrorAt(errors.New("unexpected indentation"), tk.Start)
+			break
+		}
+		if tk.Depth <= depth {
+			p.rewind()
+			break
+		}
+		if tk.Type == lexer.TokenNewLine {
+			continue
+		}
+
+		if tk.Type == lexer.TokenPipe {
+			val := p.parseInlineValue()
+			tagNode.TextLines = append(tagNode.TextLines, val)
+		} else {
+			name := tk.Contents
+			if tk.Type != lexer.TokenTagName {
+				p.rewind()
+				name = "div"
+			}
+
+			tag := p.parseTag(tk.Depth, tk.Start, name)
+			if tag != nil {
+				tagNode.Nodes = append(tagNode.Nodes, tag)
+			}
 		}
 	}
 
 	if len(classes) > 0 {
 		tagNode.Attributes = append(tagNode.Attributes, TagAttribute{
 			Name: "class",
-			Value: Value{
+			Value: ValueLiteral{
 				Contents: strings.Join(classes, " "),
 			},
 		})
@@ -193,7 +233,7 @@ loop:
 			tagNode.Attributes = append(tagNode.Attributes, TagAttribute{
 				pos:  pos(idTok.Start),
 				Name: "id",
-				Value: Value{
+				Value: ValueLiteral{
 					pos:      pos(idTok.Start),
 					Contents: idTok.Contents,
 				},
@@ -207,7 +247,6 @@ loop:
 func (p *parser) parseTagAttributes() []TagAttribute {
 	attrs := []TagAttribute{}
 
-loop:
 	for {
 		tkName := p.take()
 		if tkName.Type == lexer.TokenParenClose {
@@ -226,30 +265,9 @@ loop:
 			break
 		}
 
-		var value Value
-
-		tkValue := p.take()
-
-		switch tkValue.Type {
-		case lexer.TokenQuotedString:
-			value = Value{
-				pos:      pos(tkValue.Start),
-				Contents: tkValue.Contents,
-			}
-
-		case lexer.TokenGoExpr:
-			value = Value{
-				pos:            pos(tkValue.Start),
-				Contents:       tkValue.Contents,
-				IsGoExpression: true,
-			}
-
-		default:
-			p.addError(&UnexpectedTokenError{
-				Got:      tkValue.Contents,
-				Expected: "an attribute value",
-			})
-			break loop
+		value := p.parseAttributeValue()
+		if value == nil {
+			continue
 		}
 
 		attrs = append(attrs, TagAttribute{
@@ -260,4 +278,98 @@ loop:
 	}
 
 	return attrs
+}
+
+func (p *parser) parseAttributeValue() Value {
+	values := make([]Value, 0, 1)
+
+loop:
+	for {
+		tk := p.take()
+
+		switch tk.Type {
+		case lexer.TokenQuotedString:
+			values = append(values, ValueLiteral{
+				pos:      pos(tk.Start),
+				Contents: tk.Contents,
+			})
+
+		case lexer.TokenGoExpr:
+			values = append(values, ValueGoExpr{
+				pos:      pos(tk.Start),
+				Contents: tk.Contents,
+			})
+
+		default:
+			if len(values) == 0 {
+				p.addError(&UnexpectedTokenError{
+					Got:      tk.Contents,
+					Expected: "an attribute value",
+				})
+			} else {
+				p.rewind()
+			}
+			break loop
+		}
+	}
+
+	if len(values) == 1 {
+		return values[0]
+	}
+
+	return ValueConcat{
+		pos:    pos(values[0].Position()),
+		Values: values,
+	}
+}
+
+func (p *parser) parseInlineValue() Value {
+	values := make([]Value, 0, 1)
+
+loop:
+	for {
+		tk := p.take()
+
+		switch tk.Type {
+		case lexer.TokenTagInlineText:
+			values = append(values, ValueLiteral{
+				pos:      pos(tk.Start),
+				Contents: tk.Contents,
+			})
+
+		case lexer.TokenInterpolationStart:
+			tk, ok := p.mustTake(lexer.TokenGoExpr)
+			if !ok {
+				continue
+			}
+
+			values = append(values, ValueGoExpr{
+				pos:      pos(tk.Start),
+				Contents: tk.Contents,
+			})
+
+		default:
+			if len(values) == 0 {
+				p.addError(&UnexpectedTokenError{
+					Got:      tk.Contents,
+					Expected: "an inline value",
+				})
+			} else {
+				p.rewind()
+			}
+			break loop
+		}
+	}
+
+	if len(values) == 0 {
+		return nil
+	}
+	if len(values) == 1 {
+		return values[0]
+	}
+
+	return ValueConcat{
+		pos:    pos(values[0].Position()),
+		Values: values,
+	}
 }
