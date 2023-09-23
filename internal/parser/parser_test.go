@@ -214,6 +214,27 @@ func TestParser(t *testing.T) {
 				return nil
 			},
 		},
+		{
+			name: "div with Go attribute",
+			tks: []lexer.Token{
+				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenParenOpen},
+				{Type: lexer.TokenAttributeName, Contents: "foo"},
+				{Type: lexer.TokenEquals},
+				{Type: lexer.TokenGoExpr, Contents: `(bar)`},
+				{Type: lexer.TokenParenClose},
+				{Type: lexer.TokenEOF},
+			},
+			verify: func(f *TestFile) error {
+				f.OnlyNode().Run(func(n *NodeTag) {
+					assert.Equal(f.T, "input", n.Name, "tag name")
+					assert.Equal(f.T, "foo", n.Attributes[0].Name, "attr name")
+					assert.Equal(f.T, `(bar)`, n.Attributes[0].Value.Contents, "name")
+					assert.Equal(f.T, true, n.Attributes[0].Value.IsGoExpression, "name")
+				})
+				return nil
+			},
+		},
 
 		{
 			name: "error: no class after dot",
@@ -256,6 +277,41 @@ func TestParser(t *testing.T) {
 			expectErr: &UnexpectedTokenError{
 				Got:      `"hello"`,
 				Expected: "a valid top-level node",
+			},
+			verify: func(f *TestFile) error {
+				return nil
+			},
+		},
+		{
+			name: "error: missing attribute name",
+			tks: []lexer.Token{
+				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenParenOpen},
+				{Type: lexer.TokenQuotedString, Contents: `"bar"`},
+				{Type: lexer.TokenParenClose},
+				{Type: lexer.TokenEOF},
+			},
+			expectErr: &UnexpectedTokenError{
+				Got:      `"bar"`,
+				Expected: "an attribute name",
+			},
+			verify: func(f *TestFile) error {
+				return nil
+			},
+		},
+		{
+			name: "error: missing attribute value",
+			tks: []lexer.Token{
+				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenParenOpen},
+				{Type: lexer.TokenAttributeName, Contents: `foo`},
+				{Type: lexer.TokenEquals},
+				{Type: lexer.TokenParenClose},
+				{Type: lexer.TokenEOF},
+			},
+			expectErr: &UnexpectedTokenError{
+				Got:      ``,
+				Expected: "an attribute value",
 			},
 			verify: func(f *TestFile) error {
 				return nil

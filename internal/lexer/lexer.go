@@ -188,14 +188,12 @@ func (l *Lexer) takeWhitespace() {
 	for {
 		r, eof := l.take()
 		if eof {
-			return
+			break
 		}
 
-		switch r {
-		case ' ', '\t':
-		default:
+		if !isWhitespace(r) {
 			l.rewindRune()
-			return
+			break
 		}
 	}
 }
@@ -586,6 +584,10 @@ func (l *Lexer) lexAttributeValue() stateFunc {
 		return nil
 	}
 	if r != '"' {
+		if isWhitespace(r) {
+			return l.lexUnexpected(r, "an attribute value")
+		}
+
 		l.rewindRune()
 		return l.lexInterpolationInline(l.lexAttributeName)
 	}
@@ -776,4 +778,8 @@ func isASCIIDigit(r rune) bool {
 
 func isNewLine(r rune) bool {
 	return r == '\r' || r == '\n'
+}
+
+func isWhitespace(r rune) bool {
+	return r == ' ' || r == '\t'
 }
