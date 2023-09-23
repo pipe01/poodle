@@ -1,7 +1,9 @@
 package generator
 
 import (
+	"fmt"
 	"io"
+	"reflect"
 
 	"github.com/pipe01/poodle/internal/parser"
 )
@@ -24,24 +26,45 @@ func (c *context) visitFile(f *parser.File) {
 	c.w.WriteFileHeader("main")
 	c.w.WriteFuncHeader(f.Name)
 
-	for _, n := range f.Nodes {
-		c.visitNode(n)
-	}
+	c.visitNodes(f.Nodes)
 
 	c.w.WriteFuncFooter()
 }
 
+func (c *context) visitNodes(nodes []parser.Node) {
+	for _, n := range nodes {
+		c.visitNode(n)
+	}
+}
+
 func (c *context) visitNode(n parser.Node) {
 	switch n := n.(type) {
-	case parser.NodeTag:
-		c.w.WriteLiteralUnescapedf("<%s", n.Name)
+	case *parser.NodeTag:
+		c.visitNodeTag(n)
 
-		for _, attr := range n.Attributes {
-			c.w.WriteLiteralUnescapedf(` %s="`, attr.Name)
-			c.visitValue(attr.Value)
-			c.w.WriteLiteralUnescaped(`"`)
-		}
+	case *parser.NodeText:
+		c.visitValue(n.Text)
 
+	case *parser.NodeGoStatement:
+		c.visitNodeGoStatement(n)
+
+	default:
+		panic(fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String()))
+	}
+}
+
+func (c *context) visitNodeTag(n *parser.NodeTag) {
+	c.w.WriteLiteralUnescapedf("<%s", n.Name)
+
+	for _, attr := range n.Attributes {
+		c.w.WriteLiteralUnescapedf(` %s="`, attr.Name)
+		c.visitValue(attr.Value)
+		c.w.WriteLiteralUnescaped(`"`)
+	}
+
+	if n.IsSelfClosing {
+		c.w.WriteLiteralUnescaped("/>")
+	} else {
 		c.w.WriteLiteralUnescaped(">")
 
 		for _, n := range n.Nodes {
@@ -49,10 +72,13 @@ func (c *context) visitNode(n parser.Node) {
 		}
 
 		c.w.WriteLiteralUnescapedf("</%s>", n.Name)
-
-	case parser.NodeText:
-		c.visitValue(n.Text)
 	}
+}
+
+func (c *context) visitNodeGoStatement(n *parser.NodeGoStatement) {
+	c.w.WriteStatementStart(!n.HasElse, n.Keyword, n.Argument)
+	c.visitNodes(n.Nodes)
+	c.w.WriteStatementEnd(!n.HasElse)
 }
 
 func (c *context) visitValue(v parser.Value) {

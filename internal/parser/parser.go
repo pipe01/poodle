@@ -34,6 +34,23 @@ func (e *UnexpectedTokenError) Error() string {
 	return fmt.Sprintf("expected %s, found %q", e.Expected, e.Got)
 }
 
+var selfClosingTags = map[string]struct{}{
+	"area":   {},
+	"base":   {},
+	"br":     {},
+	"col":    {},
+	"embed":  {},
+	"hr":     {},
+	"img":    {},
+	"input":  {},
+	"link":   {},
+	"meta":   {},
+	"param":  {},
+	"source": {},
+	"track":  {},
+	"wbr":    {},
+}
+
 type parser struct {
 	tokens []lexer.Token
 	index  int
@@ -117,21 +134,55 @@ func (p *parser) parseFile() *File {
 	fname := p.tokens[0].Start.File
 
 	f := File{
-		Name: strings.TrimSuffix(fname, filepath.Ext(fname)),
-	}
-
-	for !p.isEOF() {
-		node := p.parseTopLevelNode()
-
-		if node != nil {
-			f.Nodes = append(f.Nodes, node)
-		}
+		Name:  strings.TrimSuffix(fname, filepath.Ext(fname)),
+		Nodes: p.parseNodesBlock(0),
 	}
 
 	return &f
 }
 
-func (p *parser) parseTopLevelNode() Node {
+func (p *parser) parseNodesBlock(depth int) (nodes []Node) {
+	var lastIf *NodeGoStatement
+
+	for {
+		tk := p.take()
+		if tk.Type == lexer.TokenEOF {
+			break
+		}
+		if tk.Type == lexer.TokenNewLine {
+			continue
+		}
+
+		if tk.Depth > depth {
+			p.addErrorAt(errors.New("unexpected indentation"), tk.Start)
+			break
+		}
+		if tk.Depth < depth {
+			p.rewind()
+			break
+		}
+
+		p.rewind()
+		node := p.parseNode(lastIf != nil)
+
+		if st, ok := node.(*NodeGoStatement); ok {
+			switch st.Keyword {
+			case lexer.TokenStartIf:
+				lastIf = st
+			case lexer.TokenStartElse:
+				lastIf.HasElse = true
+			}
+		} else {
+			lastIf = nil
+		}
+
+		nodes = append(nodes, node)
+	}
+
+	return nodes
+}
+
+func (p *parser) parseNode(hasSeenIf bool) Node {
 	tk := p.take()
 
 	switch tk.Type {
@@ -141,20 +192,69 @@ func (p *parser) parseTopLevelNode() Node {
 	case lexer.TokenDot, lexer.TokenHashtag:
 		p.rewind()
 		return p.parseTag(tk.Depth, tk.Start, "div")
+
+	case lexer.TokenInterpolationStart:
+		tkKeyword := p.take()
+		stmt := NodeGoStatement{
+			pos:     pos(tkKeyword.Start),
+			Keyword: tkKeyword.Type,
+		}
+
+		switch tkKeyword.Type {
+		case lexer.TokenStartIf, lexer.TokenStartFor:
+			tk, ok := p.mustTake(lexer.TokenGoExpr)
+			if !ok {
+				return nil
+			}
+			stmt.Argument = tk.Contents
+
+		case lexer.TokenStartElse:
+			if !hasSeenIf {
+				p.addErrorAt(errors.New(`found "else" without matching "if"`), tkKeyword.Start)
+			}
+
+		default:
+			p.addErrorAt(&UnexpectedTokenError{
+				Got:      tkKeyword.Contents,
+				Expected: "a valid statement keyword",
+			}, tkKeyword.Start)
+			return nil
+		}
+
+		stmt.Nodes = p.parseNodesBlock(tk.Depth + 1)
+
+		return &stmt
+
+	case lexer.TokenPipe:
+		var val Value
+
+		if p.peek().Type == lexer.TokenNewLine {
+			val = ValueLiteral{
+				Contents: "\n",
+			}
+		} else {
+			val = p.parseInlineValue()
+		}
+
+		return &NodeText{
+			pos:  pos(tk.Start),
+			Text: val,
+		}
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{
 		Got:      tk.Contents,
-		Expected: "a valid top-level node",
+		Expected: "a valid node",
 	}, tk.Start)
 	return nil
 }
 
-func (p *parser) parseTag(depth int, start lexer.Location, name string) NodeTag {
+func (p *parser) parseTag(depth int, start lexer.Location, name string) Node {
 	tagNode := NodeTag{
 		pos:  pos(start),
 		Name: name,
 	}
+	_, tagNode.IsSelfClosing = selfClosingTags[name]
 
 	var classes []string
 	var idTok *lexer.Token
@@ -191,7 +291,7 @@ loop:
 
 			v := p.parseInlineValue()
 			if v != nil {
-				tagNode.Nodes = append(tagNode.Nodes, NodeText{
+				tagNode.Nodes = append(tagNode.Nodes, &NodeText{
 					pos:  pos(v.Position()),
 					Text: v,
 				})
@@ -199,47 +299,7 @@ loop:
 		}
 	}
 
-	// Parse child nodes and text
-	for {
-		tk := p.take()
-		if tk.Depth > depth+1 {
-			p.addErrorAt(errors.New("unexpected indentation"), tk.Start)
-			break
-		}
-		if tk.Depth <= depth {
-			p.rewind()
-			break
-		}
-		if tk.Type == lexer.TokenNewLine {
-			continue
-		}
-
-		if tk.Type == lexer.TokenPipe {
-			var val Value
-
-			if p.peek().Type == lexer.TokenNewLine {
-				val = ValueLiteral{
-					Contents: "\n",
-				}
-			} else {
-				val = p.parseInlineValue()
-			}
-
-			tagNode.Nodes = append(tagNode.Nodes, NodeText{
-				pos:  pos(tk.Start),
-				Text: val,
-			})
-		} else {
-			name := tk.Contents
-			if tk.Type != lexer.TokenTagName {
-				p.rewind()
-				name = "div"
-			}
-
-			tag := p.parseTag(tk.Depth, tk.Start, name)
-			tagNode.Nodes = append(tagNode.Nodes, tag)
-		}
-	}
+	tagNode.Nodes = append(tagNode.Nodes, p.parseNodesBlock(depth+1)...)
 
 	if len(classes) > 0 {
 		classAttrIdx := slices.IndexFunc(tagNode.Attributes, func(e TagAttribute) bool {
@@ -279,7 +339,7 @@ loop:
 		}
 	}
 
-	return tagNode
+	return &tagNode
 }
 
 func (p *parser) parseTagAttributes() []TagAttribute {

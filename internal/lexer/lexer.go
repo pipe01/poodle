@@ -662,14 +662,17 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
 
 			if pos == 1 {
 				switch tok {
-				// If the first token is "if" or "for", emit the corresponding start token
+				// If the first token is "if", "else" or "for", emit the corresponding start token
 				// and take the rest of the line as the expression after that statement
-				case token.IF, token.FOR:
+				case token.IF, token.ELSE, token.FOR:
 					l.takeUntilByteIndex(startByteIndex + len(lit))
 
-					if tok == token.IF {
+					switch tok {
+					case token.IF:
 						l.emit(TokenStartIf)
-					} else {
+					case token.ELSE:
+						l.emit(TokenStartElse)
+					case token.FOR:
 						l.emit(TokenStartFor)
 					}
 
@@ -677,7 +680,12 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
 					l.discard()
 
 					l.takeUntilNewline()
-					l.emit(TokenGoExpr)
+					if tok == token.ELSE {
+						l.discard()
+					} else {
+						l.emit(TokenGoExpr)
+					}
+
 					return returnTo
 				}
 			}

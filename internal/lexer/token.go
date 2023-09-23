@@ -32,6 +32,7 @@ const (
 
 	TokenGoExpr
 	TokenStartIf
+	TokenStartElse
 	TokenStartFor
 
 	TokenEOF
@@ -87,6 +88,8 @@ func (t TokenType) String() string {
 		return "Go expression"
 	case TokenStartIf:
 		return "Start if"
+	case TokenStartElse:
+		return "Start else"
 	case TokenStartFor:
 		return "Start for"
 

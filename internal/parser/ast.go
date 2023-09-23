@@ -19,6 +19,16 @@ type Node interface {
 	Position() lexer.Location
 }
 
+type NodeGoStatement struct {
+	pos
+
+	Keyword lexer.TokenType
+	Nodes   []Node
+
+	Argument string
+	HasElse  bool
+}
+
 type NodeText struct {
 	pos
 
@@ -31,6 +41,8 @@ type NodeTag struct {
 	Name       string
 	Attributes []TagAttribute
 	Nodes      []Node
+
+	IsSelfClosing bool
 }
 
 type TagAttribute struct {
