@@ -33,7 +33,7 @@ func (c *context) visitFile(f *parser.File) {
 
 func (c *context) visitNode(n parser.Node) {
 	switch n := n.(type) {
-	case *parser.NodeTag:
+	case parser.NodeTag:
 		c.w.WriteLiteralUnescapedf("<%s", n.Name)
 
 		for _, attr := range n.Attributes {
@@ -49,6 +49,9 @@ func (c *context) visitNode(n parser.Node) {
 		}
 
 		c.w.WriteLiteralUnescapedf("</%s>", n.Name)
+
+	case parser.NodeText:
+		c.visitValue(n.Text)
 	}
 }
 

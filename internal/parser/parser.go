@@ -90,6 +90,14 @@ func (p *parser) rewind() {
 	p.index--
 }
 
+func (p *parser) peek() *lexer.Token {
+	if p.index >= len(p.tokens) {
+		return &p.tokens[len(p.tokens)-1] // Last token should be EOF
+	}
+
+	return &p.tokens[p.index]
+}
+
 func (p *parser) isEOF() bool {
 	return p.tokens[p.index].Type == lexer.TokenEOF
 }
@@ -142,7 +150,7 @@ func (p *parser) parseTopLevelNode() Node {
 	return nil
 }
 
-func (p *parser) parseTag(depth int, start lexer.Location, name string) *NodeTag {
+func (p *parser) parseTag(depth int, start lexer.Location, name string) NodeTag {
 	tagNode := NodeTag{
 		pos:  pos(start),
 		Name: name,
@@ -183,7 +191,10 @@ loop:
 
 			v := p.parseInlineValue()
 			if v != nil {
-				tagNode.TextLines = []Value{v}
+				tagNode.Nodes = append(tagNode.Nodes, NodeText{
+					pos:  pos(v.Position()),
+					Text: v,
+				})
 			}
 		}
 	}
@@ -204,8 +215,20 @@ loop:
 		}
 
 		if tk.Type == lexer.TokenPipe {
-			val := p.parseInlineValue()
-			tagNode.TextLines = append(tagNode.TextLines, val)
+			var val Value
+
+			if p.peek().Type == lexer.TokenNewLine {
+				val = ValueLiteral{
+					Contents: "\n",
+				}
+			} else {
+				val = p.parseInlineValue()
+			}
+
+			tagNode.Nodes = append(tagNode.Nodes, NodeText{
+				pos:  pos(tk.Start),
+				Text: val,
+			})
 		} else {
 			name := tk.Contents
 			if tk.Type != lexer.TokenTagName {
@@ -214,9 +237,7 @@ loop:
 			}
 
 			tag := p.parseTag(tk.Depth, tk.Start, name)
-			if tag != nil {
-				tagNode.Nodes = append(tagNode.Nodes, tag)
-			}
+			tagNode.Nodes = append(tagNode.Nodes, tag)
 		}
 	}
 
@@ -258,7 +279,7 @@ loop:
 		}
 	}
 
-	return &tagNode
+	return tagNode
 }
 
 func (p *parser) parseTagAttributes() []TagAttribute {

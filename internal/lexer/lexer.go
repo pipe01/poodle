@@ -359,7 +359,21 @@ func (l *Lexer) lexLineStart() stateFunc {
 
 	case '|':
 		l.emit(TokenPipe)
-		return l.lexWhitespacedInlineContent
+
+		r, eof := l.take()
+		if eof {
+			return nil
+		}
+
+		switch {
+		case isWhitespace(r):
+			l.rewindRune()
+			return l.lexWhitespacedInlineContent
+
+		case isNewLine(r):
+			l.rewindRune()
+			return l.lexNewLine
+		}
 
 	case '/':
 		r, eof = l.take()

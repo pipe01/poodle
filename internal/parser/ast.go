@@ -19,12 +19,17 @@ type Node interface {
 	Position() lexer.Location
 }
 
+type NodeText struct {
+	pos
+
+	Text Value
+}
+
 type NodeTag struct {
 	pos
 
 	Name       string
 	Attributes []TagAttribute
-	TextLines  []Value
 	Nodes      []Node
 }
 
