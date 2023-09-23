@@ -19,6 +19,10 @@ type LexerError struct {
 	Location Location
 }
 
+func (e *LexerError) Unwrap() error {
+	return e.Inner
+}
+
 func (e *LexerError) Error() string {
 	return fmt.Sprintf("%s at %s", e.Inner, &e.Location)
 }
@@ -577,8 +581,13 @@ func (l *Lexer) lexAttributeValue() stateFunc {
 	l.takeWhitespace()
 	l.discard()
 
-	if !l.takeRune('"') {
+	r, eof := l.take()
+	if eof {
 		return nil
+	}
+	if r != '"' {
+		l.rewindRune()
+		return l.lexInterpolationInline(l.lexAttributeName)
 	}
 
 	for {
@@ -673,6 +682,10 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
 			case token.RPAREN:
 				parenCount--
 
+				if parenCount < 0 {
+					endPos = int(pos)
+					break loop
+				}
 				if parenCount == 0 {
 					endPos = int(pos) + 1
 					break loop
