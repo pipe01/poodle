@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pipe01/poodle/internal/lexer"
+	"golang.org/x/exp/slices"
 )
 
 var ErrLastTokenEOF = errors.New("last token must be EOF")
@@ -13,6 +14,10 @@ var ErrLastTokenEOF = errors.New("last token must be EOF")
 type ParserError struct {
 	Inner    error
 	Location lexer.Location
+}
+
+func (e *ParserError) Unwrap() error {
+	return e.Inner
 }
 
 func (e *ParserError) Error() string {
@@ -104,7 +109,10 @@ func (p *parser) parseFile() *File {
 
 	for !p.isEOF() {
 		node := p.parseTopLevelNode()
-		f.Nodes = append(f.Nodes, node)
+
+		if node != nil {
+			f.Nodes = append(f.Nodes, node)
+		}
 	}
 
 	return &f
@@ -122,7 +130,11 @@ func (p *parser) parseTopLevelNode() Node {
 		return p.parseTag(tk.Start, "div")
 	}
 
-	panic("invalid")
+	p.addErrorAt(&UnexpectedTokenError{
+		Got:      tk.Contents,
+		Expected: "a valid top-level node",
+	}, tk.Start)
+	return nil
 }
 
 func (p *parser) parseTag(start lexer.Location, name string) *NodeTag {
@@ -132,6 +144,7 @@ func (p *parser) parseTag(start lexer.Location, name string) *NodeTag {
 	}
 
 	var classes []string
+	var idTok *lexer.Token
 
 loop:
 	for {
@@ -146,13 +159,18 @@ loop:
 
 			classes = append(classes, tk.Contents)
 
-		case lexer.TokenNewLine:
-			break loop
+		case lexer.TokenHashtag:
+			tk, ok := p.mustTake(lexer.TokenID)
+			if !ok {
+				continue
+			}
+
+			idTok = tk
 
 		case lexer.TokenParenOpen:
 			tagNode.Attributes = p.parseTagAttributes()
 
-		case lexer.TokenEOF:
+		case lexer.TokenNewLine, lexer.TokenEOF:
 			break loop
 		}
 	}
@@ -164,6 +182,23 @@ loop:
 				Contents: strings.Join(classes, " "),
 			},
 		})
+	}
+
+	if idTok != nil {
+		hasIDAttr := slices.ContainsFunc(tagNode.Attributes, func(e TagAttribute) bool {
+			return e.Name == "id"
+		})
+
+		if !hasIDAttr {
+			tagNode.Attributes = append(tagNode.Attributes, TagAttribute{
+				pos:  pos(idTok.Start),
+				Name: "id",
+				Value: Value{
+					pos:      pos(idTok.Start),
+					Contents: idTok.Contents,
+				},
+			})
+		}
 	}
 
 	return &tagNode

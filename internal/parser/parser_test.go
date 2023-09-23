@@ -1,10 +1,12 @@
 package parser
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
 	"github.com/pipe01/poodle/internal/lexer"
+	"github.com/stretchr/testify/assert"
 )
 
 type TestFile struct {
@@ -55,12 +57,6 @@ func (t TestNode) Run(fn interface{}) {
 	reflect.ValueOf(fn).Call([]reflect.Value{reflect.ValueOf(t.Node)})
 }
 
-func assert[T comparable](t *testing.T, expected, got T, msg string) {
-	if got != expected {
-		t.Fatalf("%s: expected %v, got %v", msg, expected, got)
-	}
-}
-
 func TestParser(t *testing.T) {
 	type testCase struct {
 		name      string
@@ -78,7 +74,7 @@ func TestParser(t *testing.T) {
 			},
 			verify: func(f *TestFile) error {
 				f.OnlyNode().Run(func(n *NodeTag) {
-					assert(f.T, "input", n.Name, "tag name")
+					assert.Equal(f.T, "input", n.Name, "tag name")
 				})
 				return nil
 			},
@@ -93,12 +89,14 @@ func TestParser(t *testing.T) {
 			},
 			verify: func(f *TestFile) error {
 				f.OnlyNode().Run(func(n *NodeTag) {
-					assert(f.T, "input", n.Name, "tag name")
-					assert(f.T, "foo", n.Attributes[0].Value.Contents, "class name")
+					assert.Equal(f.T, "input", n.Name, "tag name")
+					assert.Equal(f.T, "class", n.Attributes[0].Name, "attr name")
+					assert.Equal(f.T, "foo", n.Attributes[0].Value.Contents, "class name")
 				})
 				return nil
 			},
 		},
+
 		{
 			name: "shortcut div with class",
 			tks: []lexer.Token{
@@ -108,8 +106,9 @@ func TestParser(t *testing.T) {
 			},
 			verify: func(f *TestFile) error {
 				f.OnlyNode().Run(func(n *NodeTag) {
-					assert(f.T, "div", n.Name, "tag name")
-					assert(f.T, "foo", n.Attributes[0].Value.Contents, "class name")
+					assert.Equal(f.T, "div", n.Name, "tag name")
+					assert.Equal(f.T, "class", n.Attributes[0].Name, "attr name")
+					assert.Equal(f.T, "foo", n.Attributes[0].Value.Contents, "class name")
 				})
 				return nil
 			},
@@ -125,9 +124,140 @@ func TestParser(t *testing.T) {
 			},
 			verify: func(f *TestFile) error {
 				f.OnlyNode().Run(func(n *NodeTag) {
-					assert(f.T, "div", n.Name, "tag name")
-					assert(f.T, "foo bar", n.Attributes[0].Value.Contents, "class name")
+					assert.Equal(f.T, "div", n.Name, "tag name")
+					assert.Equal(f.T, "class", n.Attributes[0].Name, "attr name")
+					assert.Equal(f.T, "foo bar", n.Attributes[0].Value.Contents, "class name")
 				})
+				return nil
+			},
+		},
+
+		{
+			name: "shortcut div with id",
+			tks: []lexer.Token{
+				{Type: lexer.TokenHashtag},
+				{Type: lexer.TokenID, Contents: "foo"},
+				{Type: lexer.TokenEOF},
+			},
+			verify: func(f *TestFile) error {
+				f.OnlyNode().Run(func(n *NodeTag) {
+					assert.Equal(f.T, "div", n.Name, "tag name")
+					assert.Equal(f.T, "id", n.Attributes[0].Name, "attr name")
+					assert.Equal(f.T, "foo", n.Attributes[0].Value.Contents, "id name")
+				})
+				return nil
+			},
+		},
+		{
+			name: "shortcut div with id and class",
+			tks: []lexer.Token{
+				{Type: lexer.TokenHashtag},
+				{Type: lexer.TokenID, Contents: "foo"},
+				{Type: lexer.TokenDot},
+				{Type: lexer.TokenClassName, Contents: "bar"},
+				{Type: lexer.TokenEOF},
+			},
+			verify: func(f *TestFile) error {
+				f.OnlyNode().Run(func(n *NodeTag) {
+					assert.Equal(f.T, "div", n.Name, "tag name")
+					assert.Equal(f.T, "class", n.Attributes[0].Name, "class attr name")
+					assert.Equal(f.T, "bar", n.Attributes[0].Value.Contents, "class name")
+					assert.Equal(f.T, "id", n.Attributes[1].Name, "id attr name")
+					assert.Equal(f.T, "foo", n.Attributes[1].Value.Contents, "id name")
+				})
+				return nil
+			},
+		},
+
+		{
+			name: "div with one attribute",
+			tks: []lexer.Token{
+				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenParenOpen},
+				{Type: lexer.TokenAttributeName, Contents: "foo"},
+				{Type: lexer.TokenEquals},
+				{Type: lexer.TokenQuotedString, Contents: `"bar"`},
+				{Type: lexer.TokenParenClose},
+				{Type: lexer.TokenEOF},
+			},
+			verify: func(f *TestFile) error {
+				f.OnlyNode().Run(func(n *NodeTag) {
+					assert.Equal(f.T, "input", n.Name, "tag name")
+					assert.Equal(f.T, "foo", n.Attributes[0].Name, "attr name")
+					assert.Equal(f.T, `"bar"`, n.Attributes[0].Value.Contents, "name")
+				})
+				return nil
+			},
+		},
+		{
+			name: "div with two attributes",
+			tks: []lexer.Token{
+				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenParenOpen},
+				{Type: lexer.TokenAttributeName, Contents: "foo"},
+				{Type: lexer.TokenEquals},
+				{Type: lexer.TokenQuotedString, Contents: `"bar"`},
+				{Type: lexer.TokenAttributeName, Contents: "foo2"},
+				{Type: lexer.TokenEquals},
+				{Type: lexer.TokenQuotedString, Contents: `"bar2"`},
+				{Type: lexer.TokenParenClose},
+				{Type: lexer.TokenEOF},
+			},
+			verify: func(f *TestFile) error {
+				f.OnlyNode().Run(func(n *NodeTag) {
+					assert.Equal(f.T, "input", n.Name, "tag name")
+					assert.Equal(f.T, "foo", n.Attributes[0].Name, "attr name")
+					assert.Equal(f.T, `"bar"`, n.Attributes[0].Value.Contents, "name")
+					assert.Equal(f.T, "foo2", n.Attributes[1].Name, "attr name")
+					assert.Equal(f.T, `"bar2"`, n.Attributes[1].Value.Contents, "name")
+				})
+				return nil
+			},
+		},
+
+		{
+			name: "error: no class after dot",
+			tks: []lexer.Token{
+				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenDot},
+				{Type: lexer.TokenQuotedString, Contents: `"hello"`},
+				{Type: lexer.TokenEOF},
+			},
+			expectErr: &UnexpectedTokenError{
+				Got:      `"hello"`,
+				Expected: lexer.TokenClassName.String(),
+			},
+			verify: func(f *TestFile) error {
+				return nil
+			},
+		},
+		{
+			name: "error: no id after hashtag",
+			tks: []lexer.Token{
+				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenHashtag},
+				{Type: lexer.TokenQuotedString, Contents: `"hello"`},
+				{Type: lexer.TokenEOF},
+			},
+			expectErr: &UnexpectedTokenError{
+				Got:      `"hello"`,
+				Expected: lexer.TokenID.String(),
+			},
+			verify: func(f *TestFile) error {
+				return nil
+			},
+		},
+		{
+			name: "error: invalid top level node",
+			tks: []lexer.Token{
+				{Type: lexer.TokenQuotedString, Contents: `"hello"`},
+				{Type: lexer.TokenEOF},
+			},
+			expectErr: &UnexpectedTokenError{
+				Got:      `"hello"`,
+				Expected: "a valid top-level node",
+			},
+			verify: func(f *TestFile) error {
 				return nil
 			},
 		},
@@ -138,7 +268,7 @@ func TestParser(t *testing.T) {
 
 		t.Run(c.name, func(t *testing.T) {
 			f, err := Parse(c.tks)
-			if err != nil {
+			if err != nil && (c.expectErr == nil || errors.Unwrap(err).Error() != c.expectErr.Error()) {
 				t.Fatalf("failed to parse tokens: %s", err)
 			}
 
@@ -148,7 +278,7 @@ func TestParser(t *testing.T) {
 			}
 
 			err = c.verify(&tf)
-			if err != c.expectErr {
+			if err != nil {
 				t.Fatalf("failed to verify result: %s", err)
 			}
 		})

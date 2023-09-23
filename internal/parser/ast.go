@@ -1,6 +1,8 @@
 package parser
 
-import "github.com/pipe01/poodle/internal/lexer"
+import (
+	"github.com/pipe01/poodle/internal/lexer"
+)
 
 type pos lexer.Location
 
@@ -18,6 +20,7 @@ type Node interface {
 
 type NodeTag struct {
 	pos
+
 	Name       string
 	Attributes []TagAttribute
 	Body       []Value
