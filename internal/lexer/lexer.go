@@ -1,12 +1,11 @@
 package lexer
 
 import (
-	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"go/token"
 	"unicode"
+	"unicode/utf8"
 )
 
 const (
@@ -38,13 +37,7 @@ func (e *UnexpectedRuneError) Error() string {
 
 type stateFunc func() stateFunc
 
-type Lexer struct {
-	filename string
-	file     []byte
-
-	tokens chan Token
-	r      *bufio.Reader
-
+type state struct {
 	str      []rune
 	strStart Location
 
@@ -53,6 +46,16 @@ type Lexer struct {
 	lastLineCol          int
 	lastRuneSize         int
 	depth                int
+}
+
+type Lexer struct {
+	filename string
+	file     []byte
+
+	tokens chan Token
+
+	state
+	stateStack []state
 
 	err *LexerError
 }
@@ -61,14 +64,10 @@ func New(file []byte, fileName string) *Lexer {
 	tks := make(chan Token, 1)
 
 	lexer := &Lexer{
-		tokens:   tks,
-		file:     file,
-		filename: fileName,
-		r:        bufio.NewReader(bytes.NewReader(file)),
-		str:      make([]rune, 0, 200),
-		strStart: Location{
-			File: fileName,
-		},
+		tokens:     tks,
+		file:       file,
+		filename:   fileName,
+		stateStack: make([]state, 0, 10),
 	}
 
 	go func() {
@@ -124,10 +123,11 @@ func (l *Lexer) Collect() ([]Token, error) {
 }
 
 func (l *Lexer) take() (r rune, eof bool) {
-	r, size, err := l.r.ReadRune()
-	if err != nil {
+	if l.byteIndex >= len(l.file) {
 		return 0, true
 	}
+
+	r, size := utf8.DecodeRune(l.file[l.byteIndex:])
 
 	l.str = append(l.str, r)
 	l.lastRuneSize = size
@@ -147,6 +147,15 @@ func (l *Lexer) take() (r rune, eof bool) {
 	}
 
 	return r, false
+}
+
+func (l *Lexer) peek() (r rune, eof bool) {
+	if l.byteIndex >= len(l.file) {
+		return 0, true
+	}
+
+	r, _ = utf8.DecodeRune(l.file[l.byteIndex:])
+	return
 }
 
 func (l *Lexer) takeRune(exp rune) (taken bool) {
@@ -186,13 +195,15 @@ func (l *Lexer) takeUntilByteIndex(n int) (eof bool) {
 
 func (l *Lexer) takeWhitespace() {
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			break
 		}
 
 		if !isWhitespace(r) {
-			l.rewindRune()
+			l.state = state
 			break
 		}
 	}
@@ -200,38 +211,17 @@ func (l *Lexer) takeWhitespace() {
 
 func (l *Lexer) takeUntilNewline() {
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return
 		}
 
 		if r == '\n' {
-			l.rewindRune()
+			l.state = state
 			return
 		}
-	}
-}
-
-func (l *Lexer) rewindRune() {
-	err := l.r.UnreadRune()
-	if err != nil {
-		panic("cannot unread rune")
-	}
-
-	l.str = l.str[:len(l.str)-1]
-
-	l.byteIndex -= l.lastRuneSize
-	l.runeIndex--
-
-	if l.col == 0 {
-		l.line--
-		l.col = l.lastLineCol
-	} else {
-		l.col--
-	}
-
-	if debugPrint {
-		fmt.Println("rewind")
 	}
 }
 
@@ -276,6 +266,8 @@ func (l *Lexer) lexUnexpected(got rune, expected string) stateFunc {
 
 func (l *Lexer) takeIndentation() (depth int) {
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return
@@ -293,7 +285,7 @@ func (l *Lexer) takeIndentation() (depth int) {
 			depth = 0
 
 		default:
-			l.rewindRune()
+			l.state = state
 			return
 		}
 	}
@@ -307,13 +299,15 @@ func (l *Lexer) lexIndentation() stateFunc {
 
 func (l *Lexer) lexNewLine() stateFunc {
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return nil
 		}
 
 		if !isNewLine(r) {
-			l.rewindRune()
+			l.state = state
 			l.emit(TokenNewLine)
 			return l.lexIndentation
 		}
@@ -324,6 +318,8 @@ func (l *Lexer) lexForcedNewLine() stateFunc {
 	foundSome := false
 
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return nil
@@ -334,7 +330,7 @@ func (l *Lexer) lexForcedNewLine() stateFunc {
 				return l.lexUnexpected(r, "a new line")
 			}
 
-			l.rewindRune()
+			l.state = state
 			l.emit(TokenNewLine)
 			return l.lexIndentation
 		}
@@ -344,6 +340,7 @@ func (l *Lexer) lexForcedNewLine() stateFunc {
 }
 
 func (l *Lexer) lexLineStart() stateFunc {
+
 	r, eof := l.take()
 	if eof {
 		return nil
@@ -352,16 +349,10 @@ func (l *Lexer) lexLineStart() stateFunc {
 	case interpolationChar:
 		l.emit(TokenInterpolationStart)
 
-		r, eof := l.take()
-		if eof {
-			return nil
-		}
-
-		if isNewLine(r) {
+		if r, eof := l.peek(); !eof && isNewLine(r) {
 			return l.lexInterpolationBlock(l.lexIndentation)
 		}
 
-		l.rewindRune()
 		return l.lexInterpolationInline(l.lexForcedNewLine, true)
 
 	case '.': // Shortcut div with class
@@ -375,22 +366,23 @@ func (l *Lexer) lexLineStart() stateFunc {
 	case '|':
 		l.emit(TokenPipe)
 
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return nil
 		}
 
+		l.state = state
+
 		switch {
 		case isWhitespace(r):
-			l.rewindRune()
 			return l.lexWhitespacedInlineContent
 
 		case isNewLine(r):
-			l.rewindRune()
 			return l.lexNewLine
 
 		default:
-			l.rewindRune()
 			return l.lexTagInlineContent
 		}
 
@@ -409,13 +401,15 @@ func (l *Lexer) lexLineStart() stateFunc {
 	}
 
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return nil
 		}
 
 		if !(isASCIIDigit(r) || isASCIILetter(r) || r == '-' || r == '_') {
-			l.rewindRune()
+			l.state = state
 
 			if l.isEmpty() {
 				return l.lexUnexpected(r, "a tag name")
@@ -448,13 +442,15 @@ func (l *Lexer) lexLineStart() stateFunc {
 
 func (l *Lexer) lexComment() stateFunc {
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return nil
 		}
 
 		if r == '\n' {
-			l.rewindRune()
+			l.state = state
 			l.emit(TokenCommentText)
 			l.take()
 
@@ -464,6 +460,8 @@ func (l *Lexer) lexComment() stateFunc {
 }
 
 func (l *Lexer) lexAfterTag() stateFunc {
+	state := l.state
+
 	r, eof := l.take()
 	if eof {
 		return nil
@@ -471,7 +469,7 @@ func (l *Lexer) lexAfterTag() stateFunc {
 
 	switch r {
 	case ' ':
-		l.rewindRune()
+		l.state = state
 		return l.lexWhitespacedInlineContent
 
 	case '(':
@@ -506,13 +504,15 @@ func (l *Lexer) lexClassName() stateFunc {
 	}
 
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return nil
 		}
 
 		if !isASCIILetter(r) && !isASCIIDigit(r) && r != '-' && r != '_' {
-			l.rewindRune()
+			l.state = state
 			l.emit(TokenClassName)
 			break
 		}
@@ -523,13 +523,15 @@ func (l *Lexer) lexClassName() stateFunc {
 
 func (l *Lexer) lexID() stateFunc {
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return nil
 		}
 
 		if !isASCIILetter(r) && !isASCIIDigit(r) && r != '-' && r != '_' {
-			l.rewindRune()
+			l.state = state
 
 			if l.isEmpty() {
 				return l.lexUnexpected(r, "an ID")
@@ -545,47 +547,42 @@ func (l *Lexer) lexID() stateFunc {
 
 func (l *Lexer) lexTagInlineContent() stateFunc {
 	for {
-		r, eof := l.take()
+		r, eof := l.peek()
 		if eof {
 			return nil
 		}
 
-		if r == interpolationChar {
-			// Rewind and emit pending inline text, if any
-			l.rewindRune()
+		switch {
+		case r == interpolationChar:
+			// Emit pending inline text, if any
 			if !l.isEmpty() {
 				l.emit(TokenTagInlineText)
 			}
 
-			// Take first interpolation char again
+			// Take first interpolation char
 			l.take()
 
 			// Check if the next char if also the interpolation char
-			r, eof := l.take()
-			if eof {
-				return nil
-			}
-			if r == interpolationChar {
-				// If it is, we rewind back to the first one, discard it, then take
-				// the second one again and continue the loop in order to include it
+			if r, eof := l.peek(); !eof && r == interpolationChar {
+				// If it is, we discard the first one, then take
+				// the second one and continue the loop in order to include it
 				// in the next inline text emit
-				l.rewindRune()
 				l.discard()
 				l.take()
 				continue
 			}
 
-			l.rewindRune()
 			l.emit(TokenInterpolationStart)
 			return l.lexInterpolationInline(l.lexTagInlineContent, false)
-		}
 
-		if isNewLine(r) {
-			l.rewindRune()
+		case isNewLine(r):
 			if !l.isEmpty() {
 				l.emit(TokenTagInlineText)
 			}
 			return l.lexNewLine
+
+		default:
+			l.take()
 		}
 	}
 }
@@ -595,13 +592,15 @@ func (l *Lexer) lexAttributeName() stateFunc {
 	l.discard()
 
 	for {
+		state := l.state
+
 		r, eof := l.take()
 		if eof {
 			return nil
 		}
 
 		if !unicode.IsLetter(r) {
-			l.rewindRune()
+			l.state = state
 
 			if l.isEmpty() {
 				return l.lexAfterAttributes
@@ -629,6 +628,8 @@ func (l *Lexer) lexAttributeValue() stateFunc {
 	l.takeWhitespace()
 	l.discard()
 
+	state := l.state
+
 	r, eof := l.take()
 	if eof {
 		return nil
@@ -638,7 +639,7 @@ func (l *Lexer) lexAttributeValue() stateFunc {
 			return l.lexUnexpected(r, "an attribute value")
 		}
 
-		l.rewindRune()
+		l.state = state
 		return l.lexInterpolationInline(l.lexAttributeName, false)
 	}
 
@@ -668,14 +669,9 @@ func (l *Lexer) lexAfterAttributes() stateFunc {
 
 func (l *Lexer) lexInterpolationInline(returnTo stateFunc, parseStmts bool) stateFunc {
 	return func() stateFunc {
-		r, eof := l.take()
-		if eof {
-			return nil
-		}
-		if r == '!' {
+		if r, eof := l.peek(); !eof && r == '!' {
+			l.take()
 			l.emit(TokenExclamationPoint)
-		} else {
-			l.rewindRune()
 		}
 
 		startByteIndex := l.byteIndex
@@ -771,10 +767,12 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc, parseStmts bool) stat
 
 func (l *Lexer) lexInterpolationBlock(returnTo stateFunc) stateFunc {
 	return func() stateFunc {
+		startDepth := l.depth
+
 		for {
 			depth := l.takeIndentation()
 
-			if depth == 0 {
+			if depth <= startDepth {
 				break
 			}
 
