@@ -498,6 +498,17 @@ func (p *parser) parseKeyword() Node {
 			Arg: tkArg.Contents,
 		}
 
+	case "import":
+		tkPath, ok := p.mustTake(lexer.TokenImportPath)
+		if !ok {
+			return nil
+		}
+
+		return &NodeImport{
+			pos:  pos(tk.Start),
+			Path: tkPath.Contents,
+		}
+
 	case "mixin":
 		return p.parseMixinDef()
 	}

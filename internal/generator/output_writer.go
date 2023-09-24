@@ -9,7 +9,7 @@ import (
 )
 
 type OutputWriter interface {
-	WriteFileHeader(pkg string)
+	WriteFileHeader(pkg string, imports []string)
 	WriteFuncHeader(name string, args []string)
 
 	WriteLiteralUnescaped(str string)
@@ -43,15 +43,19 @@ func (w *outputWriter) writeIndentation() {
 	fmt.Fprint(w.w, strings.Repeat("\t", w.indentation))
 }
 
-func (w *outputWriter) WriteFileHeader(pkg string) {
+func (w *outputWriter) WriteFileHeader(pkg string, imports []string) {
 	fmt.Fprintf(w.w, `package %s
 
 import (
 	"bufio"
 	"html"
-)
-
 `, pkg)
+
+	for _, i := range imports {
+		fmt.Fprintf(w.w, "	%s\n", i)
+	}
+
+	fmt.Fprint(w.w, ")\n\n")
 }
 
 func (w *outputWriter) WriteFuncHeader(name string, args []string) {

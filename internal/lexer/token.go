@@ -8,6 +8,7 @@ const (
 	TokenIdentifier TokenType = iota
 	TokenNewLine
 	TokenTagInlineText
+	TokenImportPath
 
 	TokenParenOpen
 	TokenParenClose
@@ -45,6 +46,8 @@ func (t TokenType) String() string {
 		return "Newline"
 	case TokenTagInlineText:
 		return "Inline text"
+	case TokenImportPath:
+		return "Import path"
 
 	case TokenParenOpen:
 		return "Parentheses open"

@@ -28,13 +28,18 @@ type context struct {
 
 func (c *context) visitFile(f *parser.File) error {
 	args := []string{}
+	imports := []string{}
+
 	for _, n := range f.Nodes {
-		if n, ok := n.(*parser.NodeArg); ok {
+		switch n := n.(type) {
+		case *parser.NodeArg:
 			args = append(args, n.Arg)
+		case *parser.NodeImport:
+			imports = append(imports, n.Path)
 		}
 	}
 
-	c.w.WriteFileHeader("main")
+	c.w.WriteFileHeader("main", imports)
 	c.w.WriteFuncHeader(f.Name, args)
 
 	err := c.visitNodes(f.Nodes)
@@ -73,7 +78,7 @@ func (c *context) visitNode(n parser.Node) error {
 	case *parser.NodeGoBlock:
 		c.visitNodeGoBlock(n)
 
-	case *parser.NodeArg:
+	case *parser.NodeArg, *parser.NodeImport:
 		// Skip, already handled in visitFile
 
 	case *parser.NodeMixinDef:

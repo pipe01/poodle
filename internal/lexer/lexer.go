@@ -475,6 +475,17 @@ func (l *Lexer) lexLineStart() stateFunc {
 			l.emit(TokenTagInlineText)
 			return l.lexNewLine
 
+		case "import":
+			l.emit(TokenKeyword)
+
+			l.takeWhitespace()
+			l.discard()
+
+			l.takeUntilNewline()
+			l.emit(TokenImportPath)
+
+			return l.lexNewLine
+
 		case "mixin":
 			l.emit(TokenKeyword)
 

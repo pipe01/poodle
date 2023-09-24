@@ -13,7 +13,8 @@ func (p pos) Position() lexer.Location {
 type File struct {
 	Name  string
 	Nodes []Node
-	Args  []string
+
+	Args []string
 }
 
 type Node interface {
@@ -37,6 +38,12 @@ type NodeMixinDef struct {
 type MixinArg struct {
 	Name string
 	Type string
+}
+
+type NodeImport struct {
+	pos
+
+	Path string
 }
 
 type NodeMixinCall struct {
