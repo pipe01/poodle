@@ -710,6 +710,12 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
 			}
 
 			switch tok {
+			case token.ILLEGAL:
+				if lit == string(interpolationChar) {
+					l.err = nil
+					break loop
+				}
+
 			case token.IDENT:
 				if parenCount == 0 {
 					if startsIdent {
