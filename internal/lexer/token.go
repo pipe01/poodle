@@ -5,9 +5,8 @@ import "fmt"
 type TokenType int
 
 const (
-	TokenTagName TokenType = iota
+	TokenIdentifier TokenType = iota
 	TokenNewLine
-	TokenWhitespace
 	TokenTagInlineText
 
 	TokenParenOpen
@@ -15,6 +14,7 @@ const (
 
 	TokenEquals
 	TokenDot
+	TokenComma
 	TokenHashtag
 	TokenInterpolationStart
 	TokenExclamationPoint
@@ -38,12 +38,10 @@ const (
 
 func (t TokenType) String() string {
 	switch t {
-	case TokenTagName:
-		return "Tag name"
+	case TokenIdentifier:
+		return "Identifier"
 	case TokenNewLine:
 		return "Newline"
-	case TokenWhitespace:
-		return "Whitespace"
 	case TokenTagInlineText:
 		return "Inline text"
 
@@ -56,6 +54,8 @@ func (t TokenType) String() string {
 		return "Equals"
 	case TokenDot:
 		return "Dot"
+	case TokenComma:
+		return "Comma"
 	case TokenHashtag:
 		return "Hashtag"
 	case TokenInterpolationStart:

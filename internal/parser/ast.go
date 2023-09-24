@@ -26,6 +26,19 @@ type NodeArg struct {
 	Arg string
 }
 
+type NodeMixinDef struct {
+	pos
+
+	Name  string
+	Args  []MixinArg
+	Nodes []Node
+}
+
+type MixinArg struct {
+	Name string
+	Type string
+}
+
 type StatementKeyword string
 
 const (

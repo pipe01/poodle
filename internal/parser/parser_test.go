@@ -69,7 +69,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "simple tag",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenEOF},
 			},
 			verify: func(f *TestFile) error {
@@ -82,7 +82,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "simple tag with class",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenDot},
 				{Type: lexer.TokenClassName, Contents: "foo"},
 				{Type: lexer.TokenEOF},
@@ -172,7 +172,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "div with one attribute",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenParenOpen},
 				{Type: lexer.TokenAttributeName, Contents: "foo"},
 				{Type: lexer.TokenEquals},
@@ -192,7 +192,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "div with two attributes",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenParenOpen},
 				{Type: lexer.TokenAttributeName, Contents: "foo"},
 				{Type: lexer.TokenEquals},
@@ -217,7 +217,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "div with Go attribute",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenParenOpen},
 				{Type: lexer.TokenAttributeName, Contents: "foo"},
 				{Type: lexer.TokenEquals},
@@ -239,7 +239,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "error: no class after dot",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenDot},
 				{Type: lexer.TokenQuotedString, Contents: `"hello"`},
 				{Type: lexer.TokenEOF},
@@ -255,7 +255,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "error: no id after hashtag",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenHashtag},
 				{Type: lexer.TokenQuotedString, Contents: `"hello"`},
 				{Type: lexer.TokenEOF},
@@ -285,7 +285,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "error: missing attribute name",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenParenOpen},
 				{Type: lexer.TokenQuotedString, Contents: `"bar"`},
 				{Type: lexer.TokenParenClose},
@@ -302,7 +302,7 @@ func TestParser(t *testing.T) {
 		{
 			name: "error: missing attribute value",
 			tks: []lexer.Token{
-				{Type: lexer.TokenTagName, Contents: "input"},
+				{Type: lexer.TokenIdentifier, Contents: "input"},
 				{Type: lexer.TokenParenOpen},
 				{Type: lexer.TokenAttributeName, Contents: `foo`},
 				{Type: lexer.TokenEquals},

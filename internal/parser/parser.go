@@ -190,7 +190,7 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 		p.rewind()
 		return p.parseKeyword()
 
-	case lexer.TokenTagName:
+	case lexer.TokenIdentifier:
 		return p.parseTag(tk.Depth, tk.Start, tk.Contents)
 
 	case lexer.TokenDot, lexer.TokenHashtag:
@@ -494,6 +494,9 @@ func (p *parser) parseKeyword() Node {
 			pos: pos(tk.Start),
 			Arg: tkArg.Contents,
 		}
+
+	case "mixin":
+		return p.parseMixin()
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{
@@ -501,6 +504,61 @@ func (p *parser) parseKeyword() Node {
 		Expected: "a known keyword",
 	}, tk.Start)
 	return nil
+}
+
+func (p *parser) parseMixin() Node {
+	tkName, ok := p.mustTake(lexer.TokenIdentifier)
+	if !ok {
+		return nil
+	}
+
+	mixin := NodeMixinDef{
+		pos:  pos(tkName.Start),
+		Name: tkName.Contents,
+	}
+
+	_, ok = p.mustTake(lexer.TokenParenOpen)
+	if !ok {
+		return nil
+	}
+
+	// Parse arguments
+loop:
+	for {
+		tkName := p.take()
+		if tkName.Type == lexer.TokenParenClose {
+			break
+		}
+
+		tkType, ok := p.mustTake(lexer.TokenIdentifier)
+		if !ok {
+			break
+		}
+
+		mixin.Args = append(mixin.Args, MixinArg{
+			Name: tkName.Contents,
+			Type: tkType.Contents,
+		})
+
+		tk := p.take()
+		switch tk.Type {
+		case lexer.TokenComma:
+
+		case lexer.TokenParenClose:
+			break loop
+
+		default:
+			p.addErrorAt(&UnexpectedTokenError{
+				Got:      tk.Contents,
+				Expected: "comma or right parenthesis",
+			}, tk.Start)
+		}
+	}
+
+	// Parse children
+	mixin.Nodes = p.parseNodesBlock(tkName.Depth + 1)
+
+	return &mixin
 }
 
 func concatValues(a, b Value) Value {

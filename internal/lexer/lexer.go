@@ -202,19 +202,21 @@ func (l *Lexer) takeUntilByteIndex(n int) (eof bool) {
 	return false
 }
 
-func (l *Lexer) takeWhitespace() {
+func (l *Lexer) takeWhitespace() (took bool) {
 	for {
 		state := l.state
 
 		r, eof := l.take()
 		if eof {
-			break
+			return false
 		}
 
 		if !isWhitespace(r) {
 			l.state = state
-			break
+			return took
 		}
+
+		took = true
 	}
 }
 
@@ -297,6 +299,29 @@ func (l *Lexer) takeIndentation() (depth int) {
 			l.state = state
 			return
 		}
+	}
+}
+
+func (l *Lexer) takeIdentifier(expected string) (found bool) {
+	for {
+		r, eof := l.peek()
+		if eof {
+			return false
+		}
+
+		// This could be optimized, but it's more legible like this
+		if l.isEmpty() {
+			if !unicode.IsLetter(r) && r != '_' {
+				l.lexUnexpected(r, expected)
+				return false
+			}
+		} else {
+			if !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_' {
+				return true
+			}
+		}
+
+		l.take()
 	}
 }
 
@@ -445,10 +470,18 @@ func (l *Lexer) lexLineStart() stateFunc {
 			l.takeUntilNewline()
 			l.emit(TokenTagInlineText)
 			return l.lexNewLine
+
+		case "mixin":
+			l.emit(TokenKeyword)
+
+			l.takeWhitespace()
+			l.discard()
+
+			return l.lexMixinDef
 		}
 	}
 
-	l.emit(TokenTagName)
+	l.emit(TokenIdentifier)
 	return l.lexAfterTag
 }
 
@@ -801,6 +834,87 @@ func (l *Lexer) lexWhitespacedInlineContent() stateFunc {
 	}
 
 	return l.lexTagInlineContent
+}
+
+func (l *Lexer) lexMixinDef() stateFunc {
+	// Lex mixin name
+	if !l.takeIdentifier("mixin name") {
+		return nil
+	}
+	l.emit(TokenIdentifier)
+
+	if !l.takeRune('(') {
+		return nil
+	}
+	l.emit(TokenParenOpen)
+
+	// Lex mixin args
+loop:
+	for {
+		l.takeWhitespace()
+		l.discard()
+
+		if r, eof := l.peek(); !eof && r == ')' {
+			l.take()
+			l.emit(TokenParenClose)
+			break
+		}
+
+		// Take argument name
+		if !l.takeIdentifier("mixin argument name") {
+			return nil
+		}
+		l.emit(TokenIdentifier)
+
+		// Take at least one space
+		if !l.takeRune(' ') {
+			return nil
+		}
+		l.takeWhitespace()
+		l.discard()
+
+		// Take argument type
+		for {
+			r, eof := l.peek()
+			if eof {
+				return nil
+			}
+
+			if r == ',' || r == ')' {
+				break
+			}
+
+			l.take()
+		}
+		l.emit(TokenIdentifier)
+
+		// Skip whitespace
+		l.takeWhitespace()
+		l.discard()
+
+		// Take comma or right parenthesis
+		r, eof := l.take()
+		if eof {
+			return nil
+		}
+
+		switch r {
+		case ')':
+			l.emit(TokenParenClose)
+			break loop
+		case ',':
+			l.emit(TokenComma)
+		default:
+			l.lexUnexpected(r, "comma or right parenthesis")
+			return nil
+		}
+	}
+
+	if !l.takeRune('\n') {
+		return nil
+	}
+
+	return l.lexIndentation
 }
 
 func isASCIILetter(r rune) bool {
