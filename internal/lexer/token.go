@@ -12,8 +12,6 @@ const (
 
 	TokenParenOpen
 	TokenParenClose
-	TokenBraceOpen
-	TokenBraceClose
 
 	TokenEquals
 	TokenDot
@@ -32,6 +30,7 @@ const (
 	TokenQuotedString
 
 	TokenGoExpr
+	TokenGoBlock
 	TokenStartIf
 	TokenStartElse
 	TokenStartFor
@@ -54,10 +53,6 @@ func (t TokenType) String() string {
 		return "Parentheses open"
 	case TokenParenClose:
 		return "Parentheses close"
-	case TokenBraceOpen:
-		return "Brace open"
-	case TokenBraceClose:
-		return "Brace close"
 
 	case TokenEquals:
 		return "Equals"
@@ -89,6 +84,8 @@ func (t TokenType) String() string {
 
 	case TokenGoExpr:
 		return "Go expression"
+	case TokenGoBlock:
+		return "Go block"
 	case TokenStartIf:
 		return "Start if"
 	case TokenStartElse:

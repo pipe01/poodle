@@ -274,29 +274,35 @@ func (l *Lexer) lexUnexpected(got rune, expected string) stateFunc {
 	})
 }
 
-func (l *Lexer) lexIndentation() stateFunc {
-	l.depth = 0
-
+func (l *Lexer) takeIndentation() (depth int) {
 	for {
 		r, eof := l.take()
 		if eof {
-			return nil
+			return
 		}
 
 		switch r {
 		case ' ':
-			return l.lexError(errors.New("spaces indentation is not allowed"))
+			l.lexError(errors.New("spaces indentation is not allowed"))
+			return
+
 		case '\t':
-			l.depth++
+			depth++
+
 		case '\n':
-			l.discard()
-			l.depth = 0
+			depth = 0
+
 		default:
 			l.rewindRune()
-			l.discard()
-			return l.lexLineStart
+			return
 		}
 	}
+}
+
+func (l *Lexer) lexIndentation() stateFunc {
+	l.depth = l.takeIndentation()
+	l.discard()
+	return l.lexLineStart
 }
 
 func (l *Lexer) lexNewLine() stateFunc {
@@ -345,7 +351,18 @@ func (l *Lexer) lexLineStart() stateFunc {
 	switch r {
 	case interpolationChar:
 		l.emit(TokenInterpolationStart)
-		return l.lexInterpolation(l.lexForcedNewLine)
+
+		r, eof := l.take()
+		if eof {
+			return nil
+		}
+
+		if isNewLine(r) {
+			return l.lexInterpolationBlock(l.lexIndentation)
+		}
+
+		l.rewindRune()
+		return l.lexInterpolationInline(l.lexForcedNewLine)
 
 	case '.': // Shortcut div with class
 		l.emit(TokenDot)
@@ -560,7 +577,7 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 
 			l.rewindRune()
 			l.emit(TokenInterpolationStart)
-			return l.lexInterpolation(l.lexTagInlineContent)
+			return l.lexInterpolationInline(l.lexTagInlineContent)
 		}
 
 		if isNewLine(r) {
@@ -647,23 +664,6 @@ func (l *Lexer) lexAfterAttributes() stateFunc {
 
 	l.emit(TokenParenClose)
 	return l.lexAfterTag
-}
-
-func (l *Lexer) lexInterpolation(returnTo stateFunc) stateFunc {
-	return func() stateFunc {
-		r, eof := l.take()
-		if eof {
-			return nil
-		}
-
-		if r == '{' {
-			l.emit(TokenBraceOpen)
-			return l.lexInterpolationBlock(returnTo)
-		}
-
-		l.rewindRune()
-		return l.lexInterpolationInline(returnTo)
-	}
 }
 
 func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
@@ -759,46 +759,20 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
 	}
 }
 
-// This function uses the built-in Go token scanner to intelligently find
-// the closing right brace, avoiding things like braces inside strings
 func (l *Lexer) lexInterpolationBlock(returnTo stateFunc) stateFunc {
 	return func() stateFunc {
-		startByteIndex := l.byteIndex
-		scan, f := l.setupGoScanner()
-
-		bracesCount := 1
-		var rbracePos int
-
-	loop:
 		for {
-			pos, tok, _ := scan.Scan()
+			depth := l.takeIndentation()
 
-			switch tok {
-			case token.LBRACE:
-				bracesCount++
-
-			case token.RBRACE:
-				bracesCount--
-				if bracesCount == 0 {
-					rbracePos = int(pos) - f.Base()
-					break loop
-				}
-
-			case token.EOF:
-				return l.lexError(errors.New("cannot find expression end brace"))
+			if depth == 0 {
+				break
 			}
-		}
 
-		for l.byteIndex < startByteIndex+rbracePos {
+			l.takeUntilNewline()
 			l.take()
 		}
-		l.emit(TokenGoExpr)
 
-		if !l.takeRune('}') {
-			return nil
-		}
-		l.emit(TokenBraceClose)
-
+		l.emit(TokenGoBlock)
 		return returnTo
 	}
 }
