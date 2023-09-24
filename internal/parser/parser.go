@@ -441,14 +441,24 @@ loop:
 			})
 
 		case lexer.TokenInterpolationStart:
+			escape := true
+
+			tk := p.take()
+			if tk.Type == lexer.TokenExclamationPoint {
+				escape = false
+			} else {
+				p.rewind()
+			}
+
 			tk, ok := p.mustTake(lexer.TokenGoExpr)
 			if !ok {
 				continue
 			}
 
 			val = concatValues(val, ValueGoExpr{
-				pos:      pos(tk.Start),
-				Contents: tk.Contents,
+				pos:        pos(tk.Start),
+				Contents:   tk.Contents,
+				EscapeHTML: escape,
 			})
 
 		default:

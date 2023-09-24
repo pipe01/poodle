@@ -17,6 +17,7 @@ const (
 	TokenDot
 	TokenHashtag
 	TokenInterpolationStart
+	TokenExclamationPoint
 	TokenPipe
 
 	TokenCommentStart
@@ -62,6 +63,8 @@ func (t TokenType) String() string {
 		return "Hashtag"
 	case TokenInterpolationStart:
 		return "Interpolation start"
+	case TokenExclamationPoint:
+		return "Exclamation point"
 	case TokenPipe:
 		return "Pipe"
 

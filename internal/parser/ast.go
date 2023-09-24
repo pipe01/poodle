@@ -79,7 +79,8 @@ func (ValueLiteral) value() {}
 
 type ValueGoExpr struct {
 	pos
-	Contents string
+	Contents   string
+	EscapeHTML bool
 }
 
 func (ValueGoExpr) value() {}

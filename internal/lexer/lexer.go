@@ -362,7 +362,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 		}
 
 		l.rewindRune()
-		return l.lexInterpolationInline(l.lexForcedNewLine)
+		return l.lexInterpolationInline(l.lexForcedNewLine, true)
 
 	case '.': // Shortcut div with class
 		l.emit(TokenDot)
@@ -577,7 +577,7 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 
 			l.rewindRune()
 			l.emit(TokenInterpolationStart)
-			return l.lexInterpolationInline(l.lexTagInlineContent)
+			return l.lexInterpolationInline(l.lexTagInlineContent, false)
 		}
 
 		if isNewLine(r) {
@@ -639,7 +639,7 @@ func (l *Lexer) lexAttributeValue() stateFunc {
 		}
 
 		l.rewindRune()
-		return l.lexInterpolationInline(l.lexAttributeName)
+		return l.lexInterpolationInline(l.lexAttributeName, false)
 	}
 
 	for {
@@ -666,8 +666,18 @@ func (l *Lexer) lexAfterAttributes() stateFunc {
 	return l.lexAfterTag
 }
 
-func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
+func (l *Lexer) lexInterpolationInline(returnTo stateFunc, parseStmts bool) stateFunc {
 	return func() stateFunc {
+		r, eof := l.take()
+		if eof {
+			return nil
+		}
+		if r == '!' {
+			l.emit(TokenExclamationPoint)
+		} else {
+			l.rewindRune()
+		}
+
 		startByteIndex := l.byteIndex
 		scan, f := l.setupGoScanner()
 
@@ -679,7 +689,7 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc) stateFunc {
 		for {
 			pos, tok, lit := scan.Scan()
 
-			if pos == 1 {
+			if parseStmts && pos == 1 {
 				switch tok {
 				// If the first token is "if", "else" or "for", emit the corresponding start token
 				// and take the rest of the line as the expression after that statement

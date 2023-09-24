@@ -104,7 +104,11 @@ func (c *context) visitValue(v parser.Value) {
 		c.w.WriteLiteralUnescapedf(`%s`, v.Contents)
 
 	case parser.ValueGoExpr:
-		c.w.WriteGoEscaped(v.Contents)
+		if v.EscapeHTML {
+			c.w.WriteGoEscaped(v.Contents)
+		} else {
+			c.w.WriteGoUnescaped(v.Contents)
+		}
 
 	case parser.ValueConcat:
 		c.visitValue(v.A)
