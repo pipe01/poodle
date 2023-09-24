@@ -113,3 +113,8 @@ func (w *outputWriter) WriteStatementEnd(newLine bool) {
 		fmt.Fprint(w.w, "} ")
 	}
 }
+
+func (w *outputWriter) WriteGoBlock(contents string) {
+	w.writeIndentation()
+	w.w.Write([]byte(contents))
+}

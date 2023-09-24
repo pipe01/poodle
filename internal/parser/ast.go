@@ -36,6 +36,12 @@ type NodeGoStatement struct {
 	HasElse  bool
 }
 
+type NodeGoBlock struct {
+	pos
+
+	Contents string
+}
+
 type NodeText struct {
 	pos
 

@@ -199,6 +199,24 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 
 	case lexer.TokenInterpolationStart:
 		tkKeyword := p.take()
+
+		if tkKeyword.Type == lexer.TokenBraceOpen {
+			tkExpr, ok := p.mustTake(lexer.TokenGoExpr)
+			if !ok {
+				return nil
+			}
+
+			_, ok = p.mustTake(lexer.TokenBraceClose)
+			if !ok {
+				return nil
+			}
+
+			return &NodeGoBlock{
+				pos:      pos(tkKeyword.Start),
+				Contents: tkExpr.Contents,
+			}
+		}
+
 		stmt := NodeGoStatement{
 			pos:     pos(tkKeyword.Start),
 			Keyword: tkKeyword.Type,
@@ -217,10 +235,12 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 				p.addErrorAt(errors.New(`found "else" without matching "if"`), tkKeyword.Start)
 			}
 
+		case lexer.TokenBraceOpen:
+
 		default:
 			p.addErrorAt(&UnexpectedTokenError{
 				Got:      tkKeyword.Contents,
-				Expected: "a valid statement keyword",
+				Expected: "a valid Go statement or block",
 			}, tkKeyword.Start)
 			return nil
 		}

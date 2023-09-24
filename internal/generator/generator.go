@@ -55,7 +55,11 @@ func (c *context) visitNode(n parser.Node) {
 	case *parser.NodeGoStatement:
 		c.visitNodeGoStatement(n)
 
+	case *parser.NodeGoBlock:
+		c.visitNodeGoBlock(n)
+
 	case *parser.NodeArg:
+		// Skip, already handled in visitFile
 
 	default:
 		panic(fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String()))
@@ -88,6 +92,10 @@ func (c *context) visitNodeGoStatement(n *parser.NodeGoStatement) {
 	c.w.WriteStatementStart(!n.HasElse, n.Keyword, n.Argument)
 	c.visitNodes(n.Nodes)
 	c.w.WriteStatementEnd(!n.HasElse)
+}
+
+func (c *context) visitNodeGoBlock(n *parser.NodeGoBlock) {
+	c.w.WriteGoBlock(n.Contents)
 }
 
 func (c *context) visitValue(v parser.Value) {
