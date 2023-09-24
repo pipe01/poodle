@@ -39,6 +39,13 @@ type MixinArg struct {
 	Type string
 }
 
+type NodeMixinCall struct {
+	pos
+
+	Name string
+	Args []string
+}
+
 type StatementKeyword string
 
 const (

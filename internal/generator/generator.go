@@ -14,6 +14,7 @@ func Visit(w io.Writer, f *parser.File) {
 		w: &outputWriter{
 			w: w,
 		},
+		mixins: make(map[string]*parser.NodeMixinDef),
 	}
 
 	ctx.visitFile(f)
@@ -21,9 +22,11 @@ func Visit(w io.Writer, f *parser.File) {
 
 type context struct {
 	w *outputWriter
+
+	mixins map[string]*parser.NodeMixinDef
 }
 
-func (c *context) visitFile(f *parser.File) {
+func (c *context) visitFile(f *parser.File) error {
 	args := []string{}
 	for _, n := range f.Nodes {
 		if n, ok := n.(*parser.NodeArg); ok {
@@ -34,18 +37,29 @@ func (c *context) visitFile(f *parser.File) {
 	c.w.WriteFileHeader("main")
 	c.w.WriteFuncHeader(f.Name, args)
 
-	c.visitNodes(f.Nodes)
+	err := c.visitNodes(f.Nodes)
+	if err != nil {
+		return err
+	}
 
 	c.w.WriteBlockEnd(true)
+	return nil
 }
 
-func (c *context) visitNodes(nodes []parser.Node) {
+func (c *context) visitNodes(nodes []parser.Node) error {
+	var err error
+
 	for _, n := range nodes {
-		c.visitNode(n)
+		err = c.visitNode(n)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
-func (c *context) visitNode(n parser.Node) {
+func (c *context) visitNode(n parser.Node) error {
 	switch n := n.(type) {
 	case *parser.NodeTag:
 		c.visitNodeTag(n)
@@ -54,7 +68,7 @@ func (c *context) visitNode(n parser.Node) {
 		c.visitValue(n.Text)
 
 	case *parser.NodeGoStatement:
-		c.visitNodeGoStatement(n)
+		return c.visitNodeGoStatement(n)
 
 	case *parser.NodeGoBlock:
 		c.visitNodeGoBlock(n)
@@ -63,11 +77,16 @@ func (c *context) visitNode(n parser.Node) {
 		// Skip, already handled in visitFile
 
 	case *parser.NodeMixinDef:
-		c.visitNodeMixinDef(n)
+		return c.visitNodeMixinDef(n)
+
+	case *parser.NodeMixinCall:
+		return c.visitNodeMixinCall(n)
 
 	default:
-		panic(fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String()))
+		return fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String())
 	}
+
+	return nil
 }
 
 func (c *context) visitNodeTag(n *parser.NodeTag) {
@@ -92,27 +111,48 @@ func (c *context) visitNodeTag(n *parser.NodeTag) {
 	}
 }
 
-func (c *context) visitNodeGoStatement(n *parser.NodeGoStatement) {
+func (c *context) visitNodeGoStatement(n *parser.NodeGoStatement) error {
 	c.w.WriteStatementStart(!n.HasElse, string(n.Keyword), n.Argument)
-	c.visitNodes(n.Nodes)
+	if err := c.visitNodes(n.Nodes); err != nil {
+		return err
+	}
 	c.w.WriteBlockEnd(!n.HasElse)
+
+	return nil
 }
 
 func (c *context) visitNodeGoBlock(n *parser.NodeGoBlock) {
 	c.w.WriteGoBlock(n.Contents)
 }
 
-func (c *context) visitNodeMixinDef(n *parser.NodeMixinDef) {
+func (c *context) visitNodeMixinDef(n *parser.NodeMixinDef) error {
+	c.mixins[n.Name] = n
+
 	args := make([]string, len(n.Args))
 	for i, a := range n.Args {
 		args[i] = fmt.Sprintf("%s %s", a.Name, a.Type)
 	}
 
-	c.w.WriteFuncVariableStart("_mixin_"+n.Name, strings.Join(args, ", "))
+	c.w.WriteFuncVariableStart(mixinFuncName(n.Name), strings.Join(args, ", "))
 
-	c.visitNodes(n.Nodes)
+	if err := c.visitNodes(n.Nodes); err != nil {
+		return err
+	}
 
 	c.w.WriteBlockEnd(true)
+	return nil
+}
+
+func (c *context) visitNodeMixinCall(n *parser.NodeMixinCall) error {
+	mixinDef, ok := c.mixins[n.Name]
+	if !ok {
+		return fmt.Errorf("mixin %q not found", n.Name)
+	}
+
+	args := strings.Join(n.Args, ", ")
+	c.w.WriteGoBlock(fmt.Sprintf("%s(%s)\n", mixinFuncName(mixinDef.Name), args))
+
+	return nil
 }
 
 func (c *context) visitValue(v parser.Value) {
@@ -131,4 +171,8 @@ func (c *context) visitValue(v parser.Value) {
 		c.visitValue(v.A)
 		c.visitValue(v.B)
 	}
+}
+
+func mixinFuncName(mixinName string) string {
+	return "_mixin_" + mixinName
 }

@@ -15,6 +15,7 @@ const (
 	TokenEquals
 	TokenDot
 	TokenComma
+	TokenPlus
 	TokenHashtag
 	TokenInterpolationStart
 	TokenExclamationPoint
@@ -56,6 +57,8 @@ func (t TokenType) String() string {
 		return "Dot"
 	case TokenComma:
 		return "Comma"
+	case TokenPlus:
+		return "Plus"
 	case TokenHashtag:
 		return "Hashtag"
 	case TokenInterpolationStart:

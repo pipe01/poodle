@@ -380,7 +380,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 		return nil
 	}
 	switch r {
-	case interpolationChar:
+	case interpolationChar: // Interpolation
 		l.emit(TokenInterpolationStart)
 
 		if r, eof := l.peek(); !eof && r == '\n' {
@@ -400,7 +400,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 		l.emit(TokenHashtag)
 		return l.lexID
 
-	case '|':
+	case '|': // Block text
 		l.emit(TokenPipe)
 
 		state := l.state
@@ -423,7 +423,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 			return l.lexTagInlineContent
 		}
 
-	case '/':
+	case '/': // Comment
 		r, eof = l.take()
 		if eof {
 			return nil
@@ -435,6 +435,10 @@ func (l *Lexer) lexLineStart() stateFunc {
 
 		l.emit(TokenCommentStart)
 		return l.lexComment
+
+	case '+': // Mixin call
+		l.emit(TokenPlus)
+		return l.lexMixinCall
 	}
 
 	for {
@@ -915,6 +919,56 @@ loop:
 	}
 
 	return l.lexIndentation
+}
+
+func (l *Lexer) lexMixinCall() stateFunc {
+	if !l.takeIdentifier("mixin name") {
+		return nil
+	}
+	l.emit(TokenIdentifier)
+
+	if !l.takeRune('(') {
+		return nil
+	}
+	l.emit(TokenParenOpen)
+
+	l.takeWhitespace()
+	l.discard()
+
+loop:
+	for {
+		r, eof := l.peek()
+		if eof {
+			return nil
+		}
+
+		switch r {
+		case ',':
+			l.emit(TokenGoExpr)
+			l.take()
+			l.emit(TokenComma)
+
+			l.takeWhitespace()
+			l.discard()
+
+		case ')':
+			if !l.isEmpty() {
+				l.emit(TokenGoExpr)
+			}
+			l.take()
+			l.emit(TokenParenClose)
+			break loop
+
+		default:
+			if r == '\n' {
+				return l.lexUnexpected(r, "an argument value")
+			}
+
+			l.take()
+		}
+	}
+
+	return l.lexForcedNewLine
 }
 
 func isASCIILetter(r rune) bool {

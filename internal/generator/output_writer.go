@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"bufio"
 	"fmt"
 	"html"
 	"io"
@@ -96,8 +97,13 @@ func (w *outputWriter) WriteBlockEnd(newLine bool) {
 }
 
 func (w *outputWriter) WriteGoBlock(contents string) {
-	// w.writeIndentation()
-	w.w.Write([]byte(contents))
+	sc := bufio.NewScanner(strings.NewReader(contents))
+
+	for sc.Scan() {
+		w.writeIndentation()
+		w.w.Write(sc.Bytes())
+		w.w.Write([]byte{'\n'})
+	}
 }
 
 func (w *outputWriter) WriteFuncVariableStart(name string, args string) {
