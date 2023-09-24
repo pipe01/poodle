@@ -22,8 +22,11 @@ type OutputWriter interface {
 
 	WriteGoBlock(contents string)
 
-	WriteStatementStart(indent bool, keyword string, arg string)
+	WriteBlockStart()
 	WriteBlockEnd(newLine bool)
+
+	WriteVariable(name string, value string)
+	WriteStatementStart(indent bool, keyword string, arg string)
 	WriteFuncVariableStart(name string, args string)
 }
 
@@ -101,6 +104,17 @@ func (w *outputWriter) WriteStatementStart(indent bool, keyword string, arg stri
 		fmt.Fprintf(w.w, "%s %s {\n", keyword, arg)
 	}
 
+	w.indent(1)
+}
+
+func (w *outputWriter) WriteVariable(name string, value string) {
+	w.writeIndentation()
+	fmt.Fprintf(w.w, "%s := %s\n", name, value)
+}
+
+func (w *outputWriter) WriteBlockStart() {
+	w.writeIndentation()
+	fmt.Fprint(w.w, "{\n")
 	w.indent(1)
 }
 

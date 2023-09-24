@@ -149,12 +149,19 @@ func (c *context) visitNodeMixinCall(n *parser.NodeMixinCall) error {
 		return fmt.Errorf("mixin %q not found", n.Name)
 	}
 
-	if len(mixinDef.Args) == 0 {
-		c.visitNodes(mixinDef.Nodes)
-	} else {
-		args := strings.Join(n.Args, ", ")
-		c.w.WriteGoBlock(fmt.Sprintf("%s(%s)\n", mixinFuncName(mixinDef.Name), args))
+	if len(n.Args) != len(mixinDef.Args) {
+		return fmt.Errorf("mixin %q needs %d but %d were passed", n.Name, len(mixinDef.Args), len(n.Args))
 	}
+
+	c.w.WriteBlockStart()
+
+	for i, arg := range mixinDef.Args {
+		c.w.WriteVariable(arg.Name, n.Args[i])
+	}
+
+	c.visitNodes(mixinDef.Nodes)
+
+	c.w.WriteBlockEnd(true)
 
 	return nil
 }
