@@ -127,7 +127,7 @@ func (l *Lexer) take() (r rune, eof bool) {
 		return 0, true
 	}
 
-	for l.file[l.byteIndex] == '\r' {
+	if l.file[l.byteIndex] == '\r' {
 		l.byteIndex++
 	}
 
@@ -158,7 +158,12 @@ func (l *Lexer) peek() (r rune, eof bool) {
 		return 0, true
 	}
 
-	r, _ = utf8.DecodeRune(l.file[l.byteIndex:])
+	idx := l.byteIndex
+	if l.file[idx] == '\r' {
+		idx++
+	}
+
+	r, _ = utf8.DecodeRune(l.file[idx:])
 	return
 }
 
@@ -354,6 +359,9 @@ func (l *Lexer) lexLineStart() stateFunc {
 		l.emit(TokenInterpolationStart)
 
 		if r, eof := l.peek(); !eof && r == '\n' {
+			l.take()
+			l.discard()
+
 			return l.lexInterpolationBlock(l.lexIndentation)
 		}
 
@@ -695,15 +703,7 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc, parseStmts bool) stat
 				// and take the rest of the line as the expression after that statement
 				case token.IF, token.ELSE, token.FOR:
 					l.takeUntilByteIndex(startByteIndex + len(lit))
-
-					switch tok {
-					case token.IF:
-						l.emit(TokenStartIf)
-					case token.ELSE:
-						l.emit(TokenStartElse)
-					case token.FOR:
-						l.emit(TokenStartFor)
-					}
+					l.emit(TokenKeyword)
 
 					l.takeWhitespace()
 					l.discard()

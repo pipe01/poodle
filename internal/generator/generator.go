@@ -89,7 +89,7 @@ func (c *context) visitNodeTag(n *parser.NodeTag) {
 }
 
 func (c *context) visitNodeGoStatement(n *parser.NodeGoStatement) {
-	c.w.WriteStatementStart(!n.HasElse, n.Keyword, n.Argument)
+	c.w.WriteStatementStart(!n.HasElse, string(n.Keyword), n.Argument)
 	c.visitNodes(n.Nodes)
 	c.w.WriteStatementEnd(!n.HasElse)
 }

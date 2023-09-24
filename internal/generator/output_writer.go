@@ -5,8 +5,6 @@ import (
 	"html"
 	"io"
 	"strings"
-
-	"github.com/pipe01/poodle/internal/lexer"
 )
 
 type outputWriter struct {
@@ -79,25 +77,15 @@ func (w *outputWriter) WriteGoEscaped(str string) {
 	fmt.Fprintf(w.w, "w.WriteString(html.EscapeString(fmt.Sprint(%s)))\n", str)
 }
 
-func (w *outputWriter) WriteStatementStart(indent bool, keyword lexer.TokenType, arg string) {
+func (w *outputWriter) WriteStatementStart(indent bool, keyword string, arg string) {
 	if indent {
 		w.writeIndentation()
 	}
 
-	keywordName := ""
-	switch keyword {
-	case lexer.TokenStartIf:
-		keywordName = "if"
-	case lexer.TokenStartElse:
-		keywordName = "else"
-	case lexer.TokenStartFor:
-		keywordName = "for"
-	}
-
 	if arg == "" {
-		fmt.Fprintf(w.w, "%s {\n", keywordName)
+		fmt.Fprintf(w.w, "%s {\n", keyword)
 	} else {
-		fmt.Fprintf(w.w, "%s %s {\n", keywordName, arg)
+		fmt.Fprintf(w.w, "%s %s {\n", keyword, arg)
 	}
 
 	w.Indent(1)
@@ -115,6 +103,6 @@ func (w *outputWriter) WriteStatementEnd(newLine bool) {
 }
 
 func (w *outputWriter) WriteGoBlock(contents string) {
-	w.writeIndentation()
+	// w.writeIndentation()
 	w.w.Write([]byte(contents))
 }

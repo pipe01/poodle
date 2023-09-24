@@ -167,9 +167,9 @@ func (p *parser) parseNodesBlock(depth int) (nodes []Node) {
 
 		if st, ok := node.(*NodeGoStatement); ok {
 			switch st.Keyword {
-			case lexer.TokenStartIf:
+			case KeywordIf:
 				lastIf = st
-			case lexer.TokenStartElse:
+			case KeywordElse:
 				lastIf.HasElse = true
 			}
 		} else {
@@ -209,18 +209,18 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 
 		stmt := NodeGoStatement{
 			pos:     pos(tkKeyword.Start),
-			Keyword: tkKeyword.Type,
+			Keyword: StatementKeyword(tkKeyword.Contents),
 		}
 
-		switch tkKeyword.Type {
-		case lexer.TokenStartIf, lexer.TokenStartFor:
+		switch stmt.Keyword {
+		case KeywordIf, KeywordFor:
 			tk, ok := p.mustTake(lexer.TokenGoExpr)
 			if !ok {
 				return nil
 			}
 			stmt.Argument = tk.Contents
 
-		case lexer.TokenStartElse:
+		case KeywordElse:
 			if !hasSeenIf {
 				p.addErrorAt(errors.New(`found "else" without matching "if"`), tkKeyword.Start)
 			}

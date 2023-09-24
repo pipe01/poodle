@@ -26,10 +26,18 @@ type NodeArg struct {
 	Arg string
 }
 
+type StatementKeyword string
+
+const (
+	KeywordIf   StatementKeyword = "if"
+	KeywordElse StatementKeyword = "else"
+	KeywordFor  StatementKeyword = "for"
+)
+
 type NodeGoStatement struct {
 	pos
 
-	Keyword lexer.TokenType
+	Keyword StatementKeyword
 	Nodes   []Node
 
 	Argument string
