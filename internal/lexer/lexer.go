@@ -770,9 +770,11 @@ func (l *Lexer) lexInterpolationBlock(returnTo stateFunc) stateFunc {
 		startDepth := l.depth
 
 		for {
+			state := l.state
 			depth := l.takeIndentation()
 
 			if depth <= startDepth {
+				l.state = state
 				break
 			}
 
