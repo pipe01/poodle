@@ -127,6 +127,10 @@ func (l *Lexer) take() (r rune, eof bool) {
 		return 0, true
 	}
 
+	for l.file[l.byteIndex] == '\r' {
+		l.byteIndex++
+	}
+
 	r, size := utf8.DecodeRune(l.file[l.byteIndex:])
 
 	l.str = append(l.str, r)
@@ -306,7 +310,7 @@ func (l *Lexer) lexNewLine() stateFunc {
 			return nil
 		}
 
-		if !isNewLine(r) {
+		if r != '\n' {
 			l.state = state
 			l.emit(TokenNewLine)
 			return l.lexIndentation
@@ -325,7 +329,7 @@ func (l *Lexer) lexForcedNewLine() stateFunc {
 			return nil
 		}
 
-		if !isNewLine(r) {
+		if r != '\n' {
 			if !foundSome {
 				return l.lexUnexpected(r, "a new line")
 			}
@@ -349,7 +353,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 	case interpolationChar:
 		l.emit(TokenInterpolationStart)
 
-		if r, eof := l.peek(); !eof && isNewLine(r) {
+		if r, eof := l.peek(); !eof && r == '\n' {
 			return l.lexInterpolationBlock(l.lexIndentation)
 		}
 
@@ -379,7 +383,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 		case isWhitespace(r):
 			return l.lexWhitespacedInlineContent
 
-		case isNewLine(r):
+		case r == '\n':
 			return l.lexNewLine
 
 		default:
@@ -485,7 +489,7 @@ func (l *Lexer) lexAfterTag() stateFunc {
 		return l.lexID
 
 	default:
-		if isNewLine(r) {
+		if r == '\n' {
 			l.emit(TokenNewLine)
 			return l.lexIndentation
 		}
@@ -575,7 +579,7 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 			l.emit(TokenInterpolationStart)
 			return l.lexInterpolationInline(l.lexTagInlineContent, false)
 
-		case isNewLine(r):
+		case r == '\n':
 			if !l.isEmpty() {
 				l.emit(TokenTagInlineText)
 			}
@@ -805,10 +809,6 @@ func isASCIILetter(r rune) bool {
 
 func isASCIIDigit(r rune) bool {
 	return r >= '0' && r <= '9'
-}
-
-func isNewLine(r rune) bool {
-	return r == '\r' || r == '\n'
 }
 
 func isWhitespace(r rune) bool {
