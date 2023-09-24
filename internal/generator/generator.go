@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 
 	"github.com/pipe01/poodle/internal/parser"
 )
@@ -35,7 +36,7 @@ func (c *context) visitFile(f *parser.File) {
 
 	c.visitNodes(f.Nodes)
 
-	c.w.WriteFuncFooter()
+	c.w.WriteBlockEnd(true)
 }
 
 func (c *context) visitNodes(nodes []parser.Node) {
@@ -60,6 +61,9 @@ func (c *context) visitNode(n parser.Node) {
 
 	case *parser.NodeArg:
 		// Skip, already handled in visitFile
+
+	case *parser.NodeMixinDef:
+		c.visitNodeMixinDef(n)
 
 	default:
 		panic(fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String()))
@@ -91,11 +95,24 @@ func (c *context) visitNodeTag(n *parser.NodeTag) {
 func (c *context) visitNodeGoStatement(n *parser.NodeGoStatement) {
 	c.w.WriteStatementStart(!n.HasElse, string(n.Keyword), n.Argument)
 	c.visitNodes(n.Nodes)
-	c.w.WriteStatementEnd(!n.HasElse)
+	c.w.WriteBlockEnd(!n.HasElse)
 }
 
 func (c *context) visitNodeGoBlock(n *parser.NodeGoBlock) {
 	c.w.WriteGoBlock(n.Contents)
+}
+
+func (c *context) visitNodeMixinDef(n *parser.NodeMixinDef) {
+	args := make([]string, len(n.Args))
+	for i, a := range n.Args {
+		args[i] = fmt.Sprintf("%s %s", a.Name, a.Type)
+	}
+
+	c.w.WriteFuncVariableStart("_mixin_"+n.Name, strings.Join(args, ", "))
+
+	c.visitNodes(n.Nodes)
+
+	c.w.WriteBlockEnd(true)
 }
 
 func (c *context) visitValue(v parser.Value) {

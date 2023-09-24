@@ -43,13 +43,6 @@ func (w *outputWriter) WriteFuncHeader(name string, args []string) {
 	w.Indent(1)
 }
 
-func (w *outputWriter) WriteFuncFooter() {
-	w.Indent(-1)
-	w.writeIndentation()
-
-	fmt.Fprint(w.w, "}\n")
-}
-
 func (w *outputWriter) WriteLiteralUnescaped(str string) {
 	w.writeIndentation()
 	fmt.Fprintf(w.w, "w.WriteString(%q)\n", str)
@@ -91,7 +84,7 @@ func (w *outputWriter) WriteStatementStart(indent bool, keyword string, arg stri
 	w.Indent(1)
 }
 
-func (w *outputWriter) WriteStatementEnd(newLine bool) {
+func (w *outputWriter) WriteBlockEnd(newLine bool) {
 	w.Indent(-1)
 	w.writeIndentation()
 
@@ -105,4 +98,10 @@ func (w *outputWriter) WriteStatementEnd(newLine bool) {
 func (w *outputWriter) WriteGoBlock(contents string) {
 	// w.writeIndentation()
 	w.w.Write([]byte(contents))
+}
+
+func (w *outputWriter) WriteFuncVariableStart(name string, args string) {
+	w.writeIndentation()
+	fmt.Fprintf(w.w, "%s := func(%s) {\n", name, args)
+	w.Indent(1)
 }
