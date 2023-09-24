@@ -260,13 +260,11 @@ func (l *Lexer) isEmpty() bool {
 }
 
 func (l *Lexer) lexError(err error) stateFunc {
-	return func() stateFunc {
-		l.err = &LexerError{
-			Inner:    err,
-			Location: l.strStart,
-		}
-		return nil
+	l.err = &LexerError{
+		Inner:    err,
+		Location: l.strStart,
 	}
+	return nil
 }
 
 func (l *Lexer) lexUnexpected(got rune, expected string) stateFunc {
@@ -373,6 +371,10 @@ func (l *Lexer) lexLineStart() stateFunc {
 		case isNewLine(r):
 			l.rewindRune()
 			return l.lexNewLine
+
+		default:
+			l.rewindRune()
+			return l.lexTagInlineContent
 		}
 
 	case '/':
@@ -403,6 +405,23 @@ func (l *Lexer) lexLineStart() stateFunc {
 			}
 
 			break
+		}
+	}
+
+	tagName := string(l.str)
+	if l.depth == 0 {
+		switch tagName {
+		case "arg":
+			l.emit(TokenKeyword)
+
+			if !l.takeRune(' ') {
+				return nil
+			}
+			l.discard()
+
+			l.takeUntilNewline()
+			l.emit(TokenTagInlineText)
+			return l.lexNewLine
 		}
 	}
 

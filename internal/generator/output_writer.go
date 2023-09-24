@@ -33,8 +33,14 @@ import (
 `, pkg)
 }
 
-func (w *outputWriter) WriteFuncHeader(name string) {
-	fmt.Fprintf(w.w, "func %s(w *bufio.Writer) {\n", name)
+func (w *outputWriter) WriteFuncHeader(name string, args []string) {
+	fmt.Fprintf(w.w, "func %s(w *bufio.Writer", name)
+
+	if len(args) > 0 {
+		fmt.Fprintf(w.w, ", %s", strings.Join(args, ", "))
+	}
+
+	fmt.Fprint(w.w, ") {\n")
 
 	w.Indent(1)
 }

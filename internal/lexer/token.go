@@ -27,6 +27,7 @@ const (
 	TokenClassName
 	TokenID
 
+	TokenKeyword
 	TokenAttributeName
 	TokenQuotedString
 
@@ -79,6 +80,8 @@ func (t TokenType) String() string {
 	case TokenID:
 		return "ID"
 
+	case TokenKeyword:
+		return "Keyword"
 	case TokenAttributeName:
 		return "Attribute name"
 	case TokenQuotedString:

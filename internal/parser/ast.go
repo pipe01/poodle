@@ -13,10 +13,17 @@ func (p pos) Position() lexer.Location {
 type File struct {
 	Name  string
 	Nodes []Node
+	Args  []string
 }
 
 type Node interface {
 	Position() lexer.Location
+}
+
+type NodeArg struct {
+	pos
+
+	Arg string
 }
 
 type NodeGoStatement struct {

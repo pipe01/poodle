@@ -186,6 +186,10 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 	tk := p.take()
 
 	switch tk.Type {
+	case lexer.TokenKeyword:
+		p.rewind()
+		return p.parseKeyword()
+
 	case lexer.TokenTagName:
 		return p.parseTag(tk.Depth, tk.Start, tk.Contents)
 
@@ -453,6 +457,32 @@ loop:
 	}
 
 	return val
+}
+
+func (p *parser) parseKeyword() Node {
+	tk, ok := p.mustTake(lexer.TokenKeyword)
+	if !ok {
+		return nil
+	}
+
+	switch tk.Contents {
+	case "arg":
+		tkArg, ok := p.mustTake(lexer.TokenTagInlineText)
+		if !ok {
+			return nil
+		}
+
+		return &NodeArg{
+			pos: pos(tk.Start),
+			Arg: tkArg.Contents,
+		}
+	}
+
+	p.addErrorAt(&UnexpectedTokenError{
+		Got:      tk.Contents,
+		Expected: "a known keyword",
+	}, tk.Start)
+	return nil
 }
 
 func concatValues(a, b Value) Value {

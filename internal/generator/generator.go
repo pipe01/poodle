@@ -23,8 +23,15 @@ type context struct {
 }
 
 func (c *context) visitFile(f *parser.File) {
+	args := []string{}
+	for _, n := range f.Nodes {
+		if n, ok := n.(*parser.NodeArg); ok {
+			args = append(args, n.Arg)
+		}
+	}
+
 	c.w.WriteFileHeader("main")
-	c.w.WriteFuncHeader(f.Name)
+	c.w.WriteFuncHeader(f.Name, args)
 
 	c.visitNodes(f.Nodes)
 
@@ -47,6 +54,8 @@ func (c *context) visitNode(n parser.Node) {
 
 	case *parser.NodeGoStatement:
 		c.visitNodeGoStatement(n)
+
+	case *parser.NodeArg:
 
 	default:
 		panic(fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String()))
