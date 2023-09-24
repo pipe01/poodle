@@ -8,12 +8,31 @@ import (
 	"strings"
 )
 
+type OutputWriter interface {
+	WriteFileHeader(pkg string)
+	WriteFuncHeader(name string, args []string)
+
+	WriteLiteralUnescaped(str string)
+	WriteLiteralUnescapedf(format string, a ...any)
+	WriteLiteralEscaped(str string)
+	WriteLiteralEscapedf(format string, a ...any)
+
+	WriteGoUnescaped(str string)
+	WriteGoEscaped(str string)
+
+	WriteGoBlock(contents string)
+
+	WriteStatementStart(indent bool, keyword string, arg string)
+	WriteBlockEnd(newLine bool)
+	WriteFuncVariableStart(name string, args string)
+}
+
 type outputWriter struct {
 	w           io.Writer
 	indentation int
 }
 
-func (w *outputWriter) Indent(delta int) {
+func (w *outputWriter) indent(delta int) {
 	w.indentation += delta
 }
 
@@ -41,7 +60,7 @@ func (w *outputWriter) WriteFuncHeader(name string, args []string) {
 
 	fmt.Fprint(w.w, ") {\n")
 
-	w.Indent(1)
+	w.indent(1)
 }
 
 func (w *outputWriter) WriteLiteralUnescaped(str string) {
@@ -82,11 +101,11 @@ func (w *outputWriter) WriteStatementStart(indent bool, keyword string, arg stri
 		fmt.Fprintf(w.w, "%s %s {\n", keyword, arg)
 	}
 
-	w.Indent(1)
+	w.indent(1)
 }
 
 func (w *outputWriter) WriteBlockEnd(newLine bool) {
-	w.Indent(-1)
+	w.indent(-1)
 	w.writeIndentation()
 
 	if newLine {
@@ -109,5 +128,5 @@ func (w *outputWriter) WriteGoBlock(contents string) {
 func (w *outputWriter) WriteFuncVariableStart(name string, args string) {
 	w.writeIndentation()
 	fmt.Fprintf(w.w, "%s := func(%s) {\n", name, args)
-	w.Indent(1)
+	w.indent(1)
 }

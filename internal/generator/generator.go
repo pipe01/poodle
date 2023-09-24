@@ -21,7 +21,7 @@ func Visit(w io.Writer, f *parser.File) {
 }
 
 type context struct {
-	w *outputWriter
+	w OutputWriter
 
 	mixins map[string]*parser.NodeMixinDef
 }
