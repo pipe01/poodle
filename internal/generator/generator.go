@@ -1,15 +1,15 @@
 package generator
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"reflect"
-	"strings"
 
 	"github.com/pipe01/poodle/internal/parser"
 )
 
-func Visit(w io.Writer, f *parser.File) {
+func Visit(w io.Writer, f *parser.File) error {
 	ctx := context{
 		w: &outputWriter{
 			w: w,
@@ -17,13 +17,15 @@ func Visit(w io.Writer, f *parser.File) {
 		mixins: make(map[string]*parser.NodeMixinDef),
 	}
 
-	ctx.visitFile(f)
+	return ctx.visitFile(f)
 }
 
 type context struct {
 	w OutputWriter
 
 	mixins map[string]*parser.NodeMixinDef
+
+	callDepth int
 }
 
 func (c *context) visitFile(f *parser.File) error {
@@ -82,7 +84,7 @@ func (c *context) visitNode(n parser.Node) error {
 		// Skip, already handled in visitFile
 
 	case *parser.NodeMixinDef:
-		return c.visitNodeMixinDef(n)
+		c.mixins[n.Name] = n
 
 	case *parser.NodeMixinCall:
 		return c.visitNodeMixinCall(n)
@@ -130,25 +132,11 @@ func (c *context) visitNodeGoBlock(n *parser.NodeGoBlock) {
 	c.w.WriteGoBlock(n.Contents)
 }
 
-func (c *context) visitNodeMixinDef(n *parser.NodeMixinDef) error {
-	c.mixins[n.Name] = n
-
-	args := make([]string, len(n.Args))
-	for i, a := range n.Args {
-		args[i] = fmt.Sprintf("%s %s", a.Name, a.Type)
-	}
-
-	c.w.WriteFuncVariableStart(mixinFuncName(n.Name), strings.Join(args, ", "))
-
-	if err := c.visitNodes(n.Nodes); err != nil {
-		return err
-	}
-
-	c.w.WriteBlockEnd(true)
-	return nil
-}
-
 func (c *context) visitNodeMixinCall(n *parser.NodeMixinCall) error {
+	if c.callDepth >= 100 {
+		return errors.New("max call depth reached")
+	}
+
 	mixinDef, ok := c.mixins[n.Name]
 	if !ok {
 		return fmt.Errorf("mixin %q not found", n.Name)
@@ -164,7 +152,11 @@ func (c *context) visitNodeMixinCall(n *parser.NodeMixinCall) error {
 		c.w.WriteVariable(arg.Name, n.Args[i])
 	}
 
-	c.visitNodes(mixinDef.Nodes)
+	c.callDepth++
+	if err := c.visitNodes(mixinDef.Nodes); err != nil {
+		return err
+	}
+	c.callDepth--
 
 	c.w.WriteBlockEnd(true)
 
