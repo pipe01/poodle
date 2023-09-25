@@ -7,10 +7,24 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/pipe01/poodle/internal/lexer"
 	"github.com/pipe01/poodle/internal/parser/ast"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 )
+
+type GeneratorError struct {
+	Inner    error
+	Location lexer.Location
+}
+
+func (e *GeneratorError) Unwrap() error {
+	return e.Inner
+}
+
+func (e *GeneratorError) Error() string {
+	return fmt.Sprintf("%s at %s", e.Inner, &e.Location)
+}
 
 type Options struct {
 	Package     string
@@ -112,7 +126,7 @@ func (c *context) visitNode(n ast.Node) error {
 		// Skip, already handled in visitFile
 
 	default:
-		return fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String())
+		return errorAt(fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String()), n.Position())
 	}
 
 	return nil
@@ -162,15 +176,15 @@ func (c *context) visitNodeGoBlock(n *ast.NodeGoBlock) {
 func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
 	mixinDef, ok := c.mixins[n.Name]
 	if !ok {
-		return fmt.Errorf("mixin %q not found", n.Name)
+		return errorAt(fmt.Errorf("mixin %q not found", n.Name), n.Position())
 	}
 
 	if slices.Contains(c.mixinCallStack, mixinDef) {
-		return errors.New("recursive mixins are not allowed")
+		return errorAt(errors.New("recursive mixins are not allowed"), n.Position())
 	}
 
 	if len(n.Args) != len(mixinDef.Args) {
-		return fmt.Errorf("mixin %q needs %d argument but %d were passed", n.Name, len(mixinDef.Args), len(n.Args))
+		return errorAt(fmt.Errorf("mixin %q needs %d argument but %d were passed", n.Name, len(mixinDef.Args), len(n.Args)), n.Position())
 	}
 
 	for i, arg := range mixinDef.Args {
@@ -210,4 +224,11 @@ func (c *context) visitValue(v ast.Value) {
 
 func mixinFuncName(mixinName string) string {
 	return "_mixin_" + mixinName
+}
+
+func errorAt(err error, pos lexer.Location) error {
+	return &GeneratorError{
+		Inner:    err,
+		Location: pos,
+	}
 }

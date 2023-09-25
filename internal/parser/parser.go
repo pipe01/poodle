@@ -267,7 +267,7 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 		}
 
 	case lexer.TokenPlus:
-		return p.parseMixinCall()
+		return p.parseMixinCall(tk.Start)
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{
@@ -587,7 +587,7 @@ func (p *parser) parseMixinDef() Node {
 	return &mixin
 }
 
-func (p *parser) parseMixinCall() Node {
+func (p *parser) parseMixinCall(start lexer.Location) Node {
 	tkName, ok := p.mustTake(lexer.TokenIdentifier)
 	if !ok {
 		return nil
@@ -625,7 +625,7 @@ func (p *parser) parseMixinCall() Node {
 	}
 
 	return &NodeMixinCall{
-		Pos:  Pos(tkName.Start),
+		Pos:  Pos(start),
 		Name: tkName.Contents,
 		Args: args,
 	}
