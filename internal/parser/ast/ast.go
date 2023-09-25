@@ -1,12 +1,12 @@
-package parser
+package ast
 
 import (
 	"github.com/pipe01/poodle/internal/lexer"
 )
 
-type pos lexer.Location
+type Pos lexer.Location
 
-func (p pos) Position() lexer.Location {
+func (p Pos) Position() lexer.Location {
 	return lexer.Location(p)
 }
 
@@ -22,13 +22,13 @@ type Node interface {
 }
 
 type NodeArg struct {
-	pos
+	Pos
 
 	Arg string
 }
 
 type NodeMixinDef struct {
-	pos
+	Pos
 
 	Name  string
 	Args  []MixinArg
@@ -41,13 +41,13 @@ type MixinArg struct {
 }
 
 type NodeImport struct {
-	pos
+	Pos
 
 	Path string
 }
 
 type NodeMixinCall struct {
-	pos
+	Pos
 
 	Name string
 	Args []string
@@ -62,7 +62,7 @@ const (
 )
 
 type NodeGoStatement struct {
-	pos
+	Pos
 
 	Keyword StatementKeyword
 	Nodes   []Node
@@ -72,19 +72,19 @@ type NodeGoStatement struct {
 }
 
 type NodeGoBlock struct {
-	pos
+	Pos
 
 	Contents string
 }
 
 type NodeText struct {
-	pos
+	Pos
 
 	Text Value
 }
 
 type NodeTag struct {
-	pos
+	Pos
 
 	Name       string
 	Attributes []TagAttribute
@@ -94,7 +94,7 @@ type NodeTag struct {
 }
 
 type TagAttribute struct {
-	pos
+	Pos
 
 	Name  string
 	Value Value
@@ -106,14 +106,14 @@ type Value interface {
 }
 
 type ValueLiteral struct {
-	pos
+	Pos
 	Contents string
 }
 
 func (ValueLiteral) value() {}
 
 type ValueGoExpr struct {
-	pos
+	Pos
 	Contents   string
 	EscapeHTML bool
 }
@@ -121,7 +121,7 @@ type ValueGoExpr struct {
 func (ValueGoExpr) value() {}
 
 type ValueConcat struct {
-	pos
+	Pos
 	A, B Value
 }
 

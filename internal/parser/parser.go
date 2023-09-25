@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pipe01/poodle/internal/lexer"
+	. "github.com/pipe01/poodle/internal/parser/ast"
 	"golang.org/x/exp/slices"
 )
 
@@ -119,10 +120,10 @@ func (p *parser) isEOF() bool {
 	return p.tokens[p.index].Type == lexer.TokenEOF
 }
 
-func (p *parser) addErrorAt(err error, pos lexer.Location) {
+func (p *parser) addErrorAt(err error, Pos lexer.Location) {
 	p.errs = append(p.errs, &ParserError{
 		Inner:    err,
-		Location: pos,
+		Location: Pos,
 	})
 }
 
@@ -202,13 +203,13 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 
 		if tkKeyword.Type == lexer.TokenGoBlock {
 			return &NodeGoBlock{
-				pos:      pos(tkKeyword.Start),
+				Pos:      Pos(tkKeyword.Start),
 				Contents: tkKeyword.Contents,
 			}
 		}
 
 		stmt := NodeGoStatement{
-			pos:     pos(tkKeyword.Start),
+			Pos:     Pos(tkKeyword.Start),
 			Keyword: StatementKeyword(tkKeyword.Contents),
 		}
 
@@ -249,7 +250,7 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 		}
 
 		return &NodeText{
-			pos:  pos(tk.Start),
+			Pos:  Pos(tk.Start),
 			Text: val,
 		}
 
@@ -266,7 +267,7 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 
 func (p *parser) parseTag(depth int, start lexer.Location, name string) Node {
 	tagNode := NodeTag{
-		pos:  pos(start),
+		Pos:  Pos(start),
 		Name: name,
 	}
 	_, tagNode.IsSelfClosing = selfClosingTags[name]
@@ -307,7 +308,7 @@ loop:
 			v := p.parseInlineValue()
 			if v != nil {
 				tagNode.Nodes = append(tagNode.Nodes, &NodeText{
-					pos:  pos(v.Position()),
+					Pos:  Pos(v.Position()),
 					Text: v,
 				})
 			}
@@ -344,10 +345,10 @@ loop:
 
 		if !hasIDAttr {
 			tagNode.Attributes = append(tagNode.Attributes, TagAttribute{
-				pos:  pos(idTok.Start),
+				Pos:  Pos(idTok.Start),
 				Name: "id",
 				Value: ValueLiteral{
-					pos:      pos(idTok.Start),
+					Pos:      Pos(idTok.Start),
 					Contents: idTok.Contents,
 				},
 			})
@@ -384,7 +385,7 @@ func (p *parser) parseTagAttributes() []TagAttribute {
 		}
 
 		attrs = append(attrs, TagAttribute{
-			pos:   pos(tkName.Start),
+			Pos:   Pos(tkName.Start),
 			Name:  tkName.Contents,
 			Value: value,
 		})
@@ -403,13 +404,13 @@ loop:
 		switch tk.Type {
 		case lexer.TokenQuotedString:
 			val = concatValues(val, ValueLiteral{
-				pos:      pos(tk.Start),
+				Pos:      Pos(tk.Start),
 				Contents: strings.TrimPrefix(strings.TrimSuffix(tk.Contents, `"`), `"`),
 			})
 
 		case lexer.TokenGoExpr:
 			val = concatValues(val, ValueGoExpr{
-				pos:      pos(tk.Start),
+				Pos:      Pos(tk.Start),
 				Contents: tk.Contents,
 			})
 
@@ -439,7 +440,7 @@ loop:
 		switch tk.Type {
 		case lexer.TokenTagInlineText:
 			val = concatValues(val, ValueLiteral{
-				pos:      pos(tk.Start),
+				Pos:      Pos(tk.Start),
 				Contents: tk.Contents,
 			})
 
@@ -459,7 +460,7 @@ loop:
 			}
 
 			val = concatValues(val, ValueGoExpr{
-				pos:        pos(tk.Start),
+				Pos:        Pos(tk.Start),
 				Contents:   tk.Contents,
 				EscapeHTML: escape,
 			})
@@ -494,7 +495,7 @@ func (p *parser) parseKeyword() Node {
 		}
 
 		return &NodeArg{
-			pos: pos(tk.Start),
+			Pos: Pos(tk.Start),
 			Arg: tkArg.Contents,
 		}
 
@@ -505,7 +506,7 @@ func (p *parser) parseKeyword() Node {
 		}
 
 		return &NodeImport{
-			pos:  pos(tk.Start),
+			Pos:  Pos(tk.Start),
 			Path: tkPath.Contents,
 		}
 
@@ -527,7 +528,7 @@ func (p *parser) parseMixinDef() Node {
 	}
 
 	mixin := NodeMixinDef{
-		pos:  pos(tkName.Start),
+		Pos:  Pos(tkName.Start),
 		Name: tkName.Contents,
 	}
 
@@ -616,7 +617,7 @@ func (p *parser) parseMixinCall() Node {
 	}
 
 	return &NodeMixinCall{
-		pos:  pos(tkName.Start),
+		Pos:  Pos(tkName.Start),
 		Name: tkName.Contents,
 		Args: args,
 	}
@@ -631,7 +632,7 @@ func concatValues(a, b Value) Value {
 	}
 
 	return ValueConcat{
-		pos: pos(a.Position()),
+		Pos: Pos(a.Position()),
 		A:   a,
 		B:   b,
 	}
