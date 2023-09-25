@@ -24,7 +24,18 @@ func New(rootPath string) *Workspace {
 }
 
 func (w *Workspace) Load(relPath string) (*ast.File, error) {
+	return w.load(relPath, make(map[string]struct{}))
+}
+
+func (w *Workspace) load(relPath string, seen map[string]struct{}) (*ast.File, error) {
 	fullPath := filepath.Join(w.rootPath, relPath)
+
+	if _, ok := seen[fullPath]; ok {
+		return nil, fmt.Errorf("detected include cycle on %q", relPath)
+	}
+
+	seen[fullPath] = struct{}{}
+	defer delete(seen, fullPath)
 
 	if f, ok := w.parsedFiles[fullPath]; ok {
 		return f, nil
@@ -45,7 +56,7 @@ func (w *Workspace) Load(relPath string) (*ast.File, error) {
 		if !filepath.IsAbs(s) {
 			s = filepath.Join(filepath.Dir(relPath), s)
 		}
-		return w.Load(s)
+		return w.load(s, seen)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("parse file: %w", err)
