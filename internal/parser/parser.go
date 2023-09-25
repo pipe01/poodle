@@ -522,25 +522,7 @@ func (p *parser) parseKeyword() Node {
 		return p.parseMixinDef()
 
 	case "include":
-		tkPath, ok := p.mustTake(lexer.TokenImportPath)
-		if !ok {
-			return nil
-		}
-
-		file, err := p.loadFile(tkPath.Contents)
-		if err != nil {
-			p.addErrorAt(fmt.Errorf("load included file: %w", err), tk.Start)
-			return nil
-		}
-
-		p.args = append(p.args, file.Args...)
-		p.imports = append(p.imports, file.Imports...)
-
-		return &NodeInclude{
-			Pos:  Pos(tk.Start),
-			File: file,
-			Path: tkPath.Contents,
-		}
+		return p.parseInclude(tk.Start)
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{
@@ -649,6 +631,33 @@ func (p *parser) parseMixinCall() Node {
 		Pos:  Pos(tkName.Start),
 		Name: tkName.Contents,
 		Args: args,
+	}
+}
+
+func (p *parser) parseInclude(start lexer.Location) Node {
+	tkPath, ok := p.mustTake(lexer.TokenImportPath)
+	if !ok {
+		return nil
+	}
+
+	fname := tkPath.Contents
+	if !strings.ContainsRune(fname, '.') {
+		fname += ".poo"
+	}
+
+	file, err := p.loadFile(fname)
+	if err != nil {
+		p.addErrorAt(fmt.Errorf("load included file: %w", err), tkPath.Start)
+		return nil
+	}
+
+	p.args = append(p.args, file.Args...)
+	p.imports = append(p.imports, file.Imports...)
+
+	return &NodeInclude{
+		Pos:  Pos(start),
+		File: file,
+		Path: tkPath.Contents,
 	}
 }
 
