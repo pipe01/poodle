@@ -170,7 +170,7 @@ func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
 	}
 
 	if len(n.Args) != len(mixinDef.Args) {
-		return fmt.Errorf("mixin %q needs %d but %d were passed", n.Name, len(mixinDef.Args), len(n.Args))
+		return fmt.Errorf("mixin %q needs %d argument but %d were passed", n.Name, len(mixinDef.Args), len(n.Args))
 	}
 
 	c.w.WriteBlockStart()

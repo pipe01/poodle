@@ -543,42 +543,42 @@ func (p *parser) parseMixinDef() Node {
 		Name: tkName.Contents,
 	}
 
-	_, ok = p.mustTake(lexer.TokenParenOpen)
-	if !ok {
+	tk := p.take()
+	if tk.Type == lexer.TokenParenOpen {
+		// Parse arguments
+		for {
+			tkName, ok := p.mustTake(lexer.TokenIdentifier)
+			if !ok {
+				break
+			}
+
+			tkType, ok := p.mustTake(lexer.TokenIdentifier)
+			if !ok {
+				break
+			}
+
+			mixin.Args = append(mixin.Args, MixinArg{
+				Name: tkName.Contents,
+				Type: tkType.Contents,
+			})
+
+			tk := p.take()
+			if tk.Type == lexer.TokenParenClose {
+				break
+			} else if tk.Type != lexer.TokenComma {
+				p.addErrorAt(&UnexpectedTokenError{
+					Got:      tk.Contents,
+					Expected: "comma or right parenthesis",
+				}, tk.Start)
+				break
+			}
+		}
+	} else if tk.Type != lexer.TokenNewLine {
+		p.addErrorAt(&UnexpectedTokenError{
+			Got:      tk.Contents,
+			Expected: "a newline or arguments",
+		}, tk.Start)
 		return nil
-	}
-
-	// Parse arguments
-loop:
-	for {
-		tkName := p.take()
-		if tkName.Type == lexer.TokenParenClose {
-			break
-		}
-
-		tkType, ok := p.mustTake(lexer.TokenIdentifier)
-		if !ok {
-			break
-		}
-
-		mixin.Args = append(mixin.Args, MixinArg{
-			Name: tkName.Contents,
-			Type: tkType.Contents,
-		})
-
-		tk := p.take()
-		switch tk.Type {
-		case lexer.TokenComma:
-
-		case lexer.TokenParenClose:
-			break loop
-
-		default:
-			p.addErrorAt(&UnexpectedTokenError{
-				Got:      tk.Contents,
-				Expected: "comma or right parenthesis",
-			}, tk.Start)
-		}
 	}
 
 	// Parse children
@@ -593,38 +593,35 @@ func (p *parser) parseMixinCall() Node {
 		return nil
 	}
 
-	_, ok = p.mustTake(lexer.TokenParenOpen)
-	if !ok {
-		return nil
-	}
-
 	args := []string{}
 
-	for {
-		tk := p.take()
-		if tk.Type == lexer.TokenParenClose {
-			break
-		}
+	tk := p.take()
+	if tk.Type == lexer.TokenParenOpen {
+		// Parse arguments
+		for {
+			tk, ok := p.mustTake(lexer.TokenGoExpr)
+			if !ok {
+				break
+			}
 
-		if tk.Type != lexer.TokenGoExpr {
-			p.addErrorAt(&UnexpectedTokenError{
-				Got:      tk.Contents,
-				Expected: "an argument value",
-			}, tk.Start)
-			break
-		}
+			args = append(args, tk.Contents)
 
-		args = append(args, tk.Contents)
-
-		tk = p.take()
-		if tk.Type == lexer.TokenParenClose {
-			break
-		} else if tk.Type != lexer.TokenComma {
-			p.addErrorAt(&UnexpectedTokenError{
-				Got:      tk.Contents,
-				Expected: "a comma or a right parenthesis",
-			}, tk.Start)
+			tk = p.take()
+			if tk.Type == lexer.TokenParenClose {
+				break
+			} else if tk.Type != lexer.TokenComma {
+				p.addErrorAt(&UnexpectedTokenError{
+					Got:      tk.Contents,
+					Expected: "a comma or a right parenthesis",
+				}, tk.Start)
+			}
 		}
+	} else if tk.Type != lexer.TokenNewLine {
+		p.addErrorAt(&UnexpectedTokenError{
+			Got:      tk.Contents,
+			Expected: "a newline or arguments",
+		}, tk.Start)
+		return nil
 	}
 
 	return &NodeMixinCall{

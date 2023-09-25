@@ -870,8 +870,16 @@ func (l *Lexer) lexMixinDef() stateFunc {
 	}
 	l.emit(TokenIdentifier)
 
-	if !l.takeRune('(') {
+	r, eof := l.take()
+	if eof {
 		return nil
+	}
+	if r == '\n' {
+		l.emit(TokenNewLine)
+		return l.lexIndentation
+	}
+	if r != '(' {
+		return l.lexUnexpected(r, "newline or argument list")
 	}
 	l.emit(TokenParenOpen)
 
@@ -880,12 +888,6 @@ loop:
 	for {
 		l.takeWhitespace()
 		l.discard()
-
-		if r, eof := l.peek(); !eof && r == ')' {
-			l.take()
-			l.emit(TokenParenClose)
-			break
-		}
 
 		// Take argument name
 		if !l.takeIdentifier("mixin argument name") {
@@ -950,8 +952,16 @@ func (l *Lexer) lexMixinCall() stateFunc {
 	}
 	l.emit(TokenIdentifier)
 
-	if !l.takeRune('(') {
+	r, eof := l.take()
+	if eof {
 		return nil
+	}
+	if r == '\n' {
+		l.emit(TokenNewLine)
+		return l.lexIndentation
+	}
+	if r != '(' {
+		return l.lexUnexpected(r, "newline or argument list")
 	}
 	l.emit(TokenParenOpen)
 
