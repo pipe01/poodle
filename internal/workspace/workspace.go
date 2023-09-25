@@ -16,11 +16,9 @@ type Workspace struct {
 	parsedFiles map[string]*ast.File
 }
 
-func ForFile(filePath string) *Workspace {
-	dir := filepath.Dir(filePath)
-
+func New(rootPath string) *Workspace {
 	return &Workspace{
-		rootPath:    dir,
+		rootPath:    rootPath,
 		parsedFiles: make(map[string]*ast.File),
 	}
 }
