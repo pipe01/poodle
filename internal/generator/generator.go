@@ -23,7 +23,7 @@ type context struct {
 
 	mixins map[string]*ast.NodeMixinDef
 
-	callDepth int
+	mixinCallStack []*ast.NodeMixinDef
 }
 
 func Visit(w io.Writer, f *ast.File, opts Options) error {
@@ -160,13 +160,13 @@ func (c *context) visitNodeGoBlock(n *ast.NodeGoBlock) {
 }
 
 func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
-	if c.callDepth >= 100 {
-		return errors.New("max call depth reached")
-	}
-
 	mixinDef, ok := c.mixins[n.Name]
 	if !ok {
 		return fmt.Errorf("mixin %q not found", n.Name)
+	}
+
+	if slices.Contains(c.mixinCallStack, mixinDef) {
+		return errors.New("recursive mixins are not allowed")
 	}
 
 	if len(n.Args) != len(mixinDef.Args) {
@@ -179,11 +179,11 @@ func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
 
 	c.w.WriteBlockStart()
 
-	c.callDepth++
+	c.mixinCallStack = append(c.mixinCallStack, mixinDef)
 	if err := c.visitNodes(mixinDef.Nodes); err != nil {
 		return err
 	}
-	c.callDepth--
+	c.mixinCallStack = c.mixinCallStack[:len(c.mixinCallStack)-1]
 
 	c.w.WriteBlockEnd(true)
 
