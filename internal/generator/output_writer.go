@@ -47,8 +47,6 @@ func (w *outputWriter) WriteFileHeader(pkg string, imports []string) {
 	fmt.Fprintf(w.w, `package %s
 
 import (
-	"bufio"
-	"html"
 `, pkg)
 
 	for _, i := range imports {

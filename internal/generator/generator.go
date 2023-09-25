@@ -7,6 +7,8 @@ import (
 	"reflect"
 
 	"github.com/pipe01/poodle/internal/parser/ast"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 func Visit(w io.Writer, f *ast.File) error {
@@ -36,7 +38,18 @@ func (c *context) visitFile(f *ast.File) error {
 		}
 	}
 
-	c.w.WriteFileHeader("main", f.Imports)
+	importsMap := map[string]struct{}{
+		`"bufio"`: {},
+		`"html"`:  {},
+	}
+	for _, i := range f.Imports {
+		importsMap[i] = struct{}{}
+	}
+
+	imports := maps.Keys(importsMap)
+	slices.Sort(imports)
+
+	c.w.WriteFileHeader("main", imports)
 	c.w.WriteFuncHeader(f.Name, f.Args)
 
 	err := c.visitNodes(f.Nodes)
