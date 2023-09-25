@@ -41,7 +41,12 @@ func (w *Workspace) Load(relPath string) (*ast.File, error) {
 		return nil, fmt.Errorf("lex file: %w", err)
 	}
 
-	file, err := parser.Parse(tks, w.Load)
+	file, err := parser.Parse(tks, func(s string) (*ast.File, error) {
+		if !filepath.IsAbs(s) {
+			s = filepath.Join(filepath.Dir(relPath), s)
+		}
+		return w.Load(s)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("parse file: %w", err)
 	}

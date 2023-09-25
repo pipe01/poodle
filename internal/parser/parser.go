@@ -136,7 +136,7 @@ func (p *parser) addError(err error) {
 }
 
 func (p *parser) parseFile() *File {
-	fname := p.tokens[0].Start.File
+	fname := filepath.Base(p.tokens[0].Start.File)
 
 	nodes := p.parseNodesBlock(0)
 

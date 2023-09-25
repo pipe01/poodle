@@ -42,6 +42,8 @@ func main() {
 
 		if *runImports {
 			cmd := exec.Command("goimports", "-w", outPath)
+			cmd.Stderr = os.Stderr
+
 			if err = cmd.Run(); err != nil {
 				kingpin.Fatalf("failed to run goimports on %q: %s", outPath, err)
 			}
