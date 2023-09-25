@@ -112,6 +112,9 @@ func (w *outputWriter) WriteStatementStart(indent bool, keyword string, arg stri
 func (w *outputWriter) WriteVariable(name string, value string) {
 	w.writeIndentation()
 	fmt.Fprintf(w.w, "%s := %s\n", name, value)
+
+	w.writeIndentation()
+	fmt.Fprintf(w.w, "_ = %s\n", name)
 }
 
 func (w *outputWriter) WriteBlockStart() {
