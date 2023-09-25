@@ -38,6 +38,8 @@ func (c *context) visitFile(f *parser.File) error {
 			args = append(args, n.Arg)
 		case *parser.NodeImport:
 			imports = append(imports, n.Path)
+		case *parser.NodeMixinDef:
+			c.mixins[n.Name] = n
 		}
 	}
 
@@ -80,14 +82,11 @@ func (c *context) visitNode(n parser.Node) error {
 	case *parser.NodeGoBlock:
 		c.visitNodeGoBlock(n)
 
-	case *parser.NodeArg, *parser.NodeImport:
-		// Skip, already handled in visitFile
-
-	case *parser.NodeMixinDef:
-		c.mixins[n.Name] = n
-
 	case *parser.NodeMixinCall:
 		return c.visitNodeMixinCall(n)
+
+	case *parser.NodeArg, *parser.NodeImport, *parser.NodeMixinDef:
+		// Skip, already handled in visitFile
 
 	default:
 		return fmt.Errorf("unknown node type %s", reflect.ValueOf(n).String())
