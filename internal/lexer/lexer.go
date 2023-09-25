@@ -473,6 +473,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 
 			l.takeUntilNewline()
 			l.emit(TokenTagInlineText)
+
 			return l.lexNewLine
 
 		case "import":
@@ -493,6 +494,17 @@ func (l *Lexer) lexLineStart() stateFunc {
 			l.discard()
 
 			return l.lexMixinDef
+
+		case "include":
+			l.emit(TokenKeyword)
+
+			l.takeWhitespace()
+			l.discard()
+
+			l.takeUntilNewline()
+			l.emit(TokenImportPath)
+
+			return l.lexNewLine
 		}
 	}
 

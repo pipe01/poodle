@@ -14,17 +14,12 @@ type File struct {
 	Name  string
 	Nodes []Node
 
-	Args []string
+	Args    []string
+	Imports []string
 }
 
 type Node interface {
 	Position() lexer.Location
-}
-
-type NodeArg struct {
-	Pos
-
-	Arg string
 }
 
 type NodeMixinDef struct {
@@ -40,9 +35,10 @@ type MixinArg struct {
 	Type string
 }
 
-type NodeImport struct {
+type NodeInclude struct {
 	Pos
 
+	File *File
 	Path string
 }
 

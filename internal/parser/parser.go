@@ -53,15 +53,19 @@ var selfClosingTags = map[string]struct{}{
 }
 
 type parser struct {
-	tokens []lexer.Token
-	index  int
+	tokens   []lexer.Token
+	loadFile func(string) (*File, error)
+	index    int
 
-	errs []*ParserError
+	errs    []*ParserError
+	imports []string
+	args    []string
 }
 
-func Parse(tokens []lexer.Token) (*File, error) {
+func Parse(tokens []lexer.Token, loadFile func(string) (*File, error)) (*File, error) {
 	p := parser{
-		tokens: tokens,
+		tokens:   tokens,
+		loadFile: loadFile,
 	}
 
 	if tokens[len(tokens)-1].Type != lexer.TokenEOF {
@@ -134,9 +138,13 @@ func (p *parser) addError(err error) {
 func (p *parser) parseFile() *File {
 	fname := p.tokens[0].Start.File
 
+	nodes := p.parseNodesBlock(0)
+
 	f := File{
-		Name:  strings.TrimSuffix(fname, filepath.Ext(fname)),
-		Nodes: p.parseNodesBlock(0),
+		Name:    strings.TrimSuffix(fname, filepath.Ext(fname)),
+		Nodes:   nodes,
+		Args:    p.args,
+		Imports: p.imports,
 	}
 
 	return &f
@@ -165,6 +173,10 @@ func (p *parser) parseNodesBlock(depth int) (nodes []Node) {
 
 		p.rewind()
 		node := p.parseNode(lastIf != nil)
+
+		if node == nil {
+			continue
+		}
 
 		if st, ok := node.(*NodeGoStatement); ok {
 			switch st.Keyword {
@@ -494,10 +506,8 @@ func (p *parser) parseKeyword() Node {
 			return nil
 		}
 
-		return &NodeArg{
-			Pos: Pos(tk.Start),
-			Arg: tkArg.Contents,
-		}
+		p.args = append(p.args, tkArg.Contents)
+		return nil
 
 	case "import":
 		tkPath, ok := p.mustTake(lexer.TokenImportPath)
@@ -505,13 +515,32 @@ func (p *parser) parseKeyword() Node {
 			return nil
 		}
 
-		return &NodeImport{
-			Pos:  Pos(tk.Start),
-			Path: tkPath.Contents,
-		}
+		p.imports = append(p.imports, tkPath.Contents)
+		return nil
 
 	case "mixin":
 		return p.parseMixinDef()
+
+	case "include":
+		tkPath, ok := p.mustTake(lexer.TokenImportPath)
+		if !ok {
+			return nil
+		}
+
+		file, err := p.loadFile(tkPath.Contents)
+		if err != nil {
+			p.addErrorAt(fmt.Errorf("load included file: %w", err), tk.Start)
+			return nil
+		}
+
+		p.args = append(p.args, file.Args...)
+		p.imports = append(p.imports, file.Imports...)
+
+		return &NodeInclude{
+			Pos:  Pos(tk.Start),
+			File: file,
+			Path: tkPath.Contents,
+		}
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{

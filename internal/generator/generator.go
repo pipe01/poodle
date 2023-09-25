@@ -29,22 +29,15 @@ type context struct {
 }
 
 func (c *context) visitFile(f *ast.File) error {
-	args := []string{}
-	imports := []string{}
-
 	for _, n := range f.Nodes {
 		switch n := n.(type) {
-		case *ast.NodeArg:
-			args = append(args, n.Arg)
-		case *ast.NodeImport:
-			imports = append(imports, n.Path)
 		case *ast.NodeMixinDef:
 			c.mixins[n.Name] = n
 		}
 	}
 
-	c.w.WriteFileHeader("main", imports)
-	c.w.WriteFuncHeader(f.Name, args)
+	c.w.WriteFileHeader("main", f.Imports)
+	c.w.WriteFuncHeader(f.Name, f.Args)
 
 	err := c.visitNodes(f.Nodes)
 	if err != nil {
@@ -71,7 +64,7 @@ func (c *context) visitNodes(nodes []ast.Node) error {
 func (c *context) visitNode(n ast.Node) error {
 	switch n := n.(type) {
 	case *ast.NodeTag:
-		c.visitNodeTag(n)
+		return c.visitNodeTag(n)
 
 	case *ast.NodeText:
 		c.visitValue(n.Text)
@@ -85,7 +78,10 @@ func (c *context) visitNode(n ast.Node) error {
 	case *ast.NodeMixinCall:
 		return c.visitNodeMixinCall(n)
 
-	case *ast.NodeArg, *ast.NodeImport, *ast.NodeMixinDef:
+	case *ast.NodeInclude:
+		return c.visitNodes(n.File.Nodes)
+
+	case *ast.NodeMixinDef:
 		// Skip, already handled in visitFile
 
 	default:
@@ -95,7 +91,7 @@ func (c *context) visitNode(n ast.Node) error {
 	return nil
 }
 
-func (c *context) visitNodeTag(n *ast.NodeTag) {
+func (c *context) visitNodeTag(n *ast.NodeTag) error {
 	c.w.WriteLiteralUnescapedf("<%s", n.Name)
 
 	for _, attr := range n.Attributes {
@@ -110,11 +106,16 @@ func (c *context) visitNodeTag(n *ast.NodeTag) {
 		c.w.WriteLiteralUnescaped(">")
 
 		for _, n := range n.Nodes {
-			c.visitNode(n)
+			err := c.visitNode(n)
+			if err != nil {
+				return err
+			}
 		}
 
 		c.w.WriteLiteralUnescapedf("</%s>", n.Name)
 	}
+
+	return nil
 }
 
 func (c *context) visitNodeGoStatement(n *ast.NodeGoStatement) error {
