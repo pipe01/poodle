@@ -173,11 +173,11 @@ func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
 		return fmt.Errorf("mixin %q needs %d argument but %d were passed", n.Name, len(mixinDef.Args), len(n.Args))
 	}
 
-	c.w.WriteBlockStart()
-
 	for i, arg := range mixinDef.Args {
-		c.w.WriteVariable(arg.Name, n.Args[i])
+		c.w.WriteVariable(arg.Name, arg.Type, n.Args[i])
 	}
+
+	c.w.WriteBlockStart()
 
 	c.callDepth++
 	if err := c.visitNodes(mixinDef.Nodes); err != nil {

@@ -87,9 +87,9 @@ func (w *outputWriter) WriteStatementStart(indent bool, keyword string, arg stri
 	w.indent(1)
 }
 
-func (w *outputWriter) WriteVariable(name string, value string) {
+func (w *outputWriter) WriteVariable(name, typ, value string) {
 	w.writeIndentation()
-	fmt.Fprintf(w.w, "%s := %s\n", name, value)
+	fmt.Fprintf(w.w, "var %s %s = %s\n", name, typ, value)
 
 	w.writeIndentation()
 	fmt.Fprintf(w.w, "_ = %s\n", name)
