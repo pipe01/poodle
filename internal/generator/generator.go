@@ -18,7 +18,7 @@ type Options struct {
 }
 
 type context struct {
-	w    OutputWriter
+	w    *outputWriter
 	opts Options
 
 	mixins map[string]*ast.NodeMixinDef

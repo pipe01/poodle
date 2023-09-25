@@ -8,28 +8,6 @@ import (
 	"strings"
 )
 
-type OutputWriter interface {
-	WriteFileHeader(pkg string, imports []string)
-	WriteFuncHeader(name string, args []string)
-
-	WriteLiteralUnescaped(str string)
-	WriteLiteralUnescapedf(format string, a ...any)
-	WriteLiteralEscaped(str string)
-	WriteLiteralEscapedf(format string, a ...any)
-
-	WriteGoUnescaped(str string)
-	WriteGoEscaped(str string)
-
-	WriteGoBlock(contents string)
-
-	WriteBlockStart()
-	WriteBlockEnd(newLine bool)
-
-	WriteVariable(name string, value string)
-	WriteStatementStart(indent bool, keyword string, arg string)
-	WriteFuncVariableStart(name string, args string)
-}
-
 type outputWriter struct {
 	w           io.Writer
 	indentation int
