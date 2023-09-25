@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,9 +13,10 @@ import (
 
 var (
 	outDir      = kingpin.Flag("out-dir", "Folder to put generated files on").Default(".").String()
-	runImports  = kingpin.Flag("go-imports", "Run goimports on each file after it's generated").Default("true").Bool()
+	runImports  = kingpin.Flag("goimports", "Run goimports on each file after it's generated").Default("true").Bool()
 	packageName = kingpin.Flag("pkg", "Package name to set on generated files").Default("main").String()
-	files       = kingpin.Arg("files", "List of files to compile").Required().Strings()
+	forceExport = kingpin.Flag("export", "Make the first letter of all template names uppercase").Default("true").Bool()
+	files       = kingpin.Arg("files", "List of files to compile").Required().ExistingFiles()
 )
 
 func main() {
@@ -30,19 +30,20 @@ func main() {
 	}
 
 	genOpts := generator.Options{
-		Package: *packageName,
+		Package:     *packageName,
+		ForceExport: *forceExport,
 	}
 
 	for _, fname := range *files {
 		outPath, err := generateFile(ws, fname, genOpts)
 		if err != nil {
-			log.Fatalf("failed to load file %q: %s", fname, err)
+			kingpin.Fatalf("failed to load file %q: %s", fname, err)
 		}
 
 		if *runImports {
 			cmd := exec.Command("goimports", "-w", outPath)
 			if err = cmd.Run(); err != nil {
-				log.Fatalf("failed to run goimports on %q: %s", outPath, err)
+				kingpin.Fatalf("failed to run goimports on %q: %s", outPath, err)
 			}
 		}
 	}

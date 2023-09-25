@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 
 	"github.com/pipe01/poodle/internal/parser/ast"
 	"golang.org/x/exp/maps"
@@ -12,7 +13,8 @@ import (
 )
 
 type Options struct {
-	Package string
+	Package     string
+	ForceExport bool
 }
 
 type context struct {
@@ -56,7 +58,13 @@ func (c *context) visitFile(f *ast.File) error {
 	slices.Sort(imports)
 
 	c.w.WriteFileHeader(c.opts.Package, imports)
-	c.w.WriteFuncHeader(f.Name, f.Args)
+
+	name := f.Name
+	if c.opts.ForceExport {
+		name = strings.ToUpper(name[:1]) + name[1:]
+	}
+
+	c.w.WriteFuncHeader(name, f.Args)
 
 	err := c.visitNodes(f.Nodes)
 	if err != nil {
