@@ -6,15 +6,15 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/pipe01/poodle/internal/parser"
+	"github.com/pipe01/poodle/internal/parser/ast"
 )
 
-func Visit(w io.Writer, f *parser.File) error {
+func Visit(w io.Writer, f *ast.File) error {
 	ctx := context{
 		w: &outputWriter{
 			w: w,
 		},
-		mixins: make(map[string]*parser.NodeMixinDef),
+		mixins: make(map[string]*ast.NodeMixinDef),
 	}
 
 	return ctx.visitFile(f)
@@ -23,22 +23,22 @@ func Visit(w io.Writer, f *parser.File) error {
 type context struct {
 	w OutputWriter
 
-	mixins map[string]*parser.NodeMixinDef
+	mixins map[string]*ast.NodeMixinDef
 
 	callDepth int
 }
 
-func (c *context) visitFile(f *parser.File) error {
+func (c *context) visitFile(f *ast.File) error {
 	args := []string{}
 	imports := []string{}
 
 	for _, n := range f.Nodes {
 		switch n := n.(type) {
-		case *parser.NodeArg:
+		case *ast.NodeArg:
 			args = append(args, n.Arg)
-		case *parser.NodeImport:
+		case *ast.NodeImport:
 			imports = append(imports, n.Path)
-		case *parser.NodeMixinDef:
+		case *ast.NodeMixinDef:
 			c.mixins[n.Name] = n
 		}
 	}
@@ -55,7 +55,7 @@ func (c *context) visitFile(f *parser.File) error {
 	return nil
 }
 
-func (c *context) visitNodes(nodes []parser.Node) error {
+func (c *context) visitNodes(nodes []ast.Node) error {
 	var err error
 
 	for _, n := range nodes {
@@ -68,24 +68,24 @@ func (c *context) visitNodes(nodes []parser.Node) error {
 	return nil
 }
 
-func (c *context) visitNode(n parser.Node) error {
+func (c *context) visitNode(n ast.Node) error {
 	switch n := n.(type) {
-	case *parser.NodeTag:
+	case *ast.NodeTag:
 		c.visitNodeTag(n)
 
-	case *parser.NodeText:
+	case *ast.NodeText:
 		c.visitValue(n.Text)
 
-	case *parser.NodeGoStatement:
+	case *ast.NodeGoStatement:
 		return c.visitNodeGoStatement(n)
 
-	case *parser.NodeGoBlock:
+	case *ast.NodeGoBlock:
 		c.visitNodeGoBlock(n)
 
-	case *parser.NodeMixinCall:
+	case *ast.NodeMixinCall:
 		return c.visitNodeMixinCall(n)
 
-	case *parser.NodeArg, *parser.NodeImport, *parser.NodeMixinDef:
+	case *ast.NodeArg, *ast.NodeImport, *ast.NodeMixinDef:
 		// Skip, already handled in visitFile
 
 	default:
@@ -95,7 +95,7 @@ func (c *context) visitNode(n parser.Node) error {
 	return nil
 }
 
-func (c *context) visitNodeTag(n *parser.NodeTag) {
+func (c *context) visitNodeTag(n *ast.NodeTag) {
 	c.w.WriteLiteralUnescapedf("<%s", n.Name)
 
 	for _, attr := range n.Attributes {
@@ -117,7 +117,7 @@ func (c *context) visitNodeTag(n *parser.NodeTag) {
 	}
 }
 
-func (c *context) visitNodeGoStatement(n *parser.NodeGoStatement) error {
+func (c *context) visitNodeGoStatement(n *ast.NodeGoStatement) error {
 	c.w.WriteStatementStart(!n.HasElse, string(n.Keyword), n.Argument)
 	if err := c.visitNodes(n.Nodes); err != nil {
 		return err
@@ -127,11 +127,11 @@ func (c *context) visitNodeGoStatement(n *parser.NodeGoStatement) error {
 	return nil
 }
 
-func (c *context) visitNodeGoBlock(n *parser.NodeGoBlock) {
+func (c *context) visitNodeGoBlock(n *ast.NodeGoBlock) {
 	c.w.WriteGoBlock(n.Contents)
 }
 
-func (c *context) visitNodeMixinCall(n *parser.NodeMixinCall) error {
+func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
 	if c.callDepth >= 100 {
 		return errors.New("max call depth reached")
 	}
@@ -162,19 +162,19 @@ func (c *context) visitNodeMixinCall(n *parser.NodeMixinCall) error {
 	return nil
 }
 
-func (c *context) visitValue(v parser.Value) {
+func (c *context) visitValue(v ast.Value) {
 	switch v := v.(type) {
-	case parser.ValueLiteral:
+	case ast.ValueLiteral:
 		c.w.WriteLiteralUnescapedf(`%s`, v.Contents)
 
-	case parser.ValueGoExpr:
+	case ast.ValueGoExpr:
 		if v.EscapeHTML {
 			c.w.WriteGoEscaped(v.Contents)
 		} else {
 			c.w.WriteGoUnescaped(v.Contents)
 		}
 
-	case parser.ValueConcat:
+	case ast.ValueConcat:
 		c.visitValue(v.A)
 		c.visitValue(v.B)
 	}
