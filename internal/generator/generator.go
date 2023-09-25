@@ -11,23 +11,29 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func Visit(w io.Writer, f *ast.File) error {
-	ctx := context{
-		w: &outputWriter{
-			w: w,
-		},
-		mixins: make(map[string]*ast.NodeMixinDef),
-	}
-
-	return ctx.visitFile(f)
+type Options struct {
+	Package string
 }
 
 type context struct {
-	w OutputWriter
+	w    OutputWriter
+	opts Options
 
 	mixins map[string]*ast.NodeMixinDef
 
 	callDepth int
+}
+
+func Visit(w io.Writer, f *ast.File, opts Options) error {
+	ctx := context{
+		w: &outputWriter{
+			w: w,
+		},
+		opts:   opts,
+		mixins: make(map[string]*ast.NodeMixinDef),
+	}
+
+	return ctx.visitFile(f)
 }
 
 func (c *context) visitFile(f *ast.File) error {
@@ -49,7 +55,7 @@ func (c *context) visitFile(f *ast.File) error {
 	imports := maps.Keys(importsMap)
 	slices.Sort(imports)
 
-	c.w.WriteFileHeader("main", imports)
+	c.w.WriteFileHeader(c.opts.Package, imports)
 	c.w.WriteFuncHeader(f.Name, f.Args)
 
 	err := c.visitNodes(f.Nodes)
