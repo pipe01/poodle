@@ -26,6 +26,10 @@ func (e *GeneratorError) Error() string {
 	return fmt.Sprintf("%s at %s", e.Inner, &e.Location)
 }
 
+func (e *GeneratorError) At() lexer.Location {
+	return e.Location
+}
+
 type Options struct {
 	Package     string
 	ForceExport bool

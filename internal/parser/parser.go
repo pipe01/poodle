@@ -26,6 +26,10 @@ func (e *ParserError) Error() string {
 	return fmt.Sprintf("%s at %s", e.Inner, &e.Location)
 }
 
+func (e *ParserError) At() lexer.Location {
+	return e.Location
+}
+
 type UnexpectedTokenError struct {
 	Got      string
 	Expected string

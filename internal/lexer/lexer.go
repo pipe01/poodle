@@ -26,6 +26,10 @@ func (e *LexerError) Error() string {
 	return fmt.Sprintf("%s at %s", e.Inner, &e.Location)
 }
 
+func (e *LexerError) At() Location {
+	return e.Location
+}
+
 type UnexpectedRuneError struct {
 	Got      rune
 	Expected string
