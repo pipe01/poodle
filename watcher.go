@@ -101,7 +101,8 @@ func (w *Watcher) RegenFile(fullPath string) {
 
 	_, err := generateFile(ws, filepath.Base(fullPath), genOpts)
 	if err != nil {
-		log.Printf("failed to generate file %q: %s", fullPath, err)
+		printFileError(err)
+		// log.Printf("failed to generate file %q: %s", fullPath, err)
 	}
 
 	for _, req := range ws.RequestedFiles() {

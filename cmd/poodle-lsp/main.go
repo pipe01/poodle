@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"path/filepath"
 
-	"github.com/pipe01/poodle/errors"
 	"github.com/pipe01/poodle/internal/lexer"
 	"github.com/pipe01/poodle/internal/workspace"
 	"github.com/tliron/commonlog"
@@ -23,6 +22,11 @@ var version string = "0.0.1"
 var handler protocol.Handler
 
 var documents = map[string]string{}
+
+type SituatedErr interface {
+	Unwrap() error
+	At() lexer.Location
+}
 
 func main() {
 	// This increases logging verbosity (optional)
@@ -92,7 +96,7 @@ func handleDocument(context *glsp.Context, docURI string) error {
 
 	_, err = ws.LoadWithContents(fileName, []byte(contents))
 	if err != nil {
-		var poserr errors.SituatedErr
+		var poserr SituatedErr
 
 		if goerrors.As(err, &poserr) {
 			diag = append(diag, protocol.Diagnostic{

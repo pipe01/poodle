@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -114,4 +115,26 @@ func watchFiles() error {
 
 	<-ch
 	return nil
+}
+
+func printFileError(err error) {
+	var locErr SituatedErr
+
+	for {
+		inner := errors.Unwrap(err)
+		if inner == nil {
+			break
+		}
+		if e, ok := inner.(SituatedErr); ok {
+			locErr = e
+		}
+
+		err = inner
+	}
+
+	if locErr != nil {
+		log.Print(locErr)
+	} else {
+		log.Print(err)
+	}
 }
