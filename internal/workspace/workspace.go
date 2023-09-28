@@ -8,23 +8,31 @@ import (
 	"github.com/pipe01/poodle/internal/lexer"
 	"github.com/pipe01/poodle/internal/parser"
 	"github.com/pipe01/poodle/internal/parser/ast"
+	"golang.org/x/exp/maps"
 )
 
 type Workspace struct {
 	rootPath string
 
-	parsedFiles map[string]*ast.File
+	parsedFiles    map[string]*ast.File
+	requestedFiles map[string]struct{}
 }
 
 func New(rootPath string) *Workspace {
 	return &Workspace{
-		rootPath:    rootPath,
-		parsedFiles: make(map[string]*ast.File),
+		rootPath:       rootPath,
+		parsedFiles:    make(map[string]*ast.File),
+		requestedFiles: make(map[string]struct{}),
 	}
+}
+
+func (w *Workspace) RequestedFiles() []string {
+	return maps.Keys(w.requestedFiles)
 }
 
 func (w *Workspace) Load(relPath string) (*ast.File, error) {
 	return w.load(relPath, func(fullPath, relPath string) ([]byte, error) {
+		w.requestedFiles[fullPath] = struct{}{}
 		return os.ReadFile(fullPath)
 	}, make(map[string]struct{}))
 }
