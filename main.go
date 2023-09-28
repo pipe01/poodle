@@ -39,7 +39,11 @@ func main() {
 
 	err := generateAll()
 	if err != nil {
-		kingpin.Fatalf("failed to generate files: %s", err)
+		if *watch {
+			log.Printf("failed to generate files: %s", err)
+		} else {
+			kingpin.Fatalf("failed to generate files: %s", err)
+		}
 	}
 
 	if *watch {
@@ -138,6 +142,8 @@ func watchFiles() error {
 				if t, ok := lastModified[event.Name]; ok && time.Now().Sub(t) < 5*time.Millisecond {
 					continue
 				}
+
+				time.Sleep(10 * time.Millisecond)
 				lastModified[event.Name] = time.Now()
 
 				log.Printf("file %q modified, recompiling...", event.Name)
@@ -161,7 +167,7 @@ func watchFiles() error {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Println("Watching files for changes...")
+	log.Println("watching files for changes...")
 
 	<-ch
 	return nil
