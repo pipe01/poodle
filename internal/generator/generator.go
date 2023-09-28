@@ -191,11 +191,14 @@ func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
 		return errorAt(fmt.Errorf("mixin %q needs %d argument but %d were passed", n.Name, len(mixinDef.Args), len(n.Args)), n.Position())
 	}
 
+	hasArgs := len(mixinDef.Args) > 0
 	for i, arg := range mixinDef.Args {
 		c.w.WriteVariable(arg.Name, arg.Type, n.Args[i])
 	}
 
-	c.w.WriteBlockStart()
+	if hasArgs {
+		c.w.WriteBlockStart()
+	}
 
 	c.mixinCallStack = append(c.mixinCallStack, mixinDef)
 	if err := c.visitNodes(mixinDef.Nodes); err != nil {
@@ -203,7 +206,9 @@ func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
 	}
 	c.mixinCallStack = c.mixinCallStack[:len(c.mixinCallStack)-1]
 
-	c.w.WriteBlockEnd(true)
+	if hasArgs {
+		c.w.WriteBlockEnd(true)
+	}
 
 	return nil
 }
