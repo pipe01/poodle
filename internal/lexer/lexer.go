@@ -39,6 +39,8 @@ func (e *UnexpectedRuneError) Error() string {
 	return fmt.Sprintf("expected %s, found %q", e.Expected, e.Got)
 }
 
+var ErrMixedIndentation = errors.New("mixed spaces and tabs aren't allowed on the same line")
+
 type stateFunc func() stateFunc
 
 type state struct {
@@ -57,6 +59,8 @@ type Lexer struct {
 	file     []byte
 
 	tokens chan Token
+
+	spacesPerLevel int
 
 	state
 	stateStack []state
@@ -280,6 +284,8 @@ func (l *Lexer) lexUnexpected(got rune, expected string) stateFunc {
 }
 
 func (l *Lexer) takeIndentation() (depth int) {
+	spaces := 0
+
 	for {
 		state := l.state
 
@@ -290,16 +296,34 @@ func (l *Lexer) takeIndentation() (depth int) {
 
 		switch r {
 		case ' ':
-			l.lexError(errors.New("spaces indentation is not allowed"))
-			return
+			if depth != 0 {
+				l.lexError(ErrMixedIndentation)
+				return 0
+			}
+
+			spaces++
 
 		case '\t':
+			if spaces != 0 {
+				l.lexError(ErrMixedIndentation)
+				return 0
+			}
+
 			depth++
 
 		case '\n':
+			spaces = 0
 			depth = 0
 
 		default:
+			if spaces > 0 {
+				if l.spacesPerLevel == 0 {
+					l.spacesPerLevel = spaces
+				}
+
+				depth = spaces / l.spacesPerLevel
+			}
+
 			l.state = state
 			return
 		}
