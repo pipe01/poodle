@@ -213,6 +213,17 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 		}
 		return nil
 
+	case lexer.TokenCommentStartBuffered:
+		tkText, ok := p.mustTake(lexer.TokenCommentText)
+		if !ok {
+			return nil
+		}
+
+		return &NodeComment{
+			Pos:  Pos(tk.Start),
+			Text: tkText.Contents,
+		}
+
 	case lexer.TokenKeyword:
 		p.rewind()
 		return p.parseKeyword()

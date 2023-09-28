@@ -23,6 +23,7 @@ const (
 	TokenPipe
 
 	TokenCommentStart
+	TokenCommentStartBuffered
 	TokenCommentText
 
 	TokenClassName
@@ -73,6 +74,8 @@ func (t TokenType) String() string {
 
 	case TokenCommentStart:
 		return "Comment start"
+	case TokenCommentStartBuffered:
+		return "Comment start buffered"
 	case TokenCommentText:
 		return "Comment text"
 

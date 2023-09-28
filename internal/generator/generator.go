@@ -108,6 +108,9 @@ func (c *context) visitNodes(nodes []ast.Node) error {
 
 func (c *context) visitNode(n ast.Node) error {
 	switch n := n.(type) {
+	case *ast.NodeComment:
+		c.visitNodeComment(n)
+
 	case *ast.NodeTag:
 		return c.visitNodeTag(n)
 
@@ -134,6 +137,10 @@ func (c *context) visitNode(n ast.Node) error {
 	}
 
 	return nil
+}
+
+func (c *context) visitNodeComment(n *ast.NodeComment) {
+	c.w.WriteLiteralUnescapedf("<!-- %s -->", n.Text)
 }
 
 func (c *context) visitNodeTag(n *ast.NodeTag) error {

@@ -22,6 +22,12 @@ type Node interface {
 	Position() lexer.Location
 }
 
+type NodeComment struct {
+	Pos
+
+	Text string
+}
+
 type NodeMixinDef struct {
 	Pos
 

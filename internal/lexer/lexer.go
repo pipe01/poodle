@@ -452,16 +452,6 @@ func (l *Lexer) lexLineStart() stateFunc {
 		}
 
 	case '/': // Comment
-		r, eof = l.take()
-		if eof {
-			return nil
-		}
-
-		if r != '/' {
-			return l.lexUnexpected(r, "'/'")
-		}
-
-		l.emit(TokenCommentStart)
 		return l.lexComment
 
 	case '+': // Mixin call
@@ -541,19 +531,34 @@ func (l *Lexer) lexLineStart() stateFunc {
 }
 
 func (l *Lexer) lexComment() stateFunc {
+	r, eof := l.take()
+	if eof {
+		return nil
+	}
+
+	if r != '/' {
+		return l.lexUnexpected(r, "'/'")
+	}
+
+	if r, eof := l.peek(); !eof && r == '-' {
+		l.take()
+		l.emit(TokenCommentStart)
+	} else {
+		l.emit(TokenCommentStartBuffered)
+	}
+
 	for {
 		state := l.state
 
 		r, eof := l.take()
-		if eof {
-			return nil
-		}
-
-		if r == '\n' {
+		if eof || r == '\n' {
 			l.state = state
 			l.emit(TokenCommentText)
 			l.take()
 
+			if eof {
+				return nil
+			}
 			return l.lexIndentation
 		}
 	}
