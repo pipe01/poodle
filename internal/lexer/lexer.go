@@ -479,6 +479,18 @@ func (l *Lexer) lexLineStart() stateFunc {
 	}
 
 	tagName := string(l.str)
+	if tagName == "include" {
+		l.emit(TokenKeyword)
+
+		l.takeWhitespace()
+		l.discard()
+
+		l.takeUntilNewline()
+		l.emit(TokenImportPath)
+
+		return l.lexNewLine
+	}
+
 	if l.depth == 0 {
 		switch tagName {
 		case "arg":
@@ -512,17 +524,6 @@ func (l *Lexer) lexLineStart() stateFunc {
 			l.discard()
 
 			return l.lexMixinDef
-
-		case "include":
-			l.emit(TokenKeyword)
-
-			l.takeWhitespace()
-			l.discard()
-
-			l.takeUntilNewline()
-			l.emit(TokenImportPath)
-
-			return l.lexNewLine
 		}
 	}
 
