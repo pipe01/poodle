@@ -136,6 +136,10 @@ func (p *parser) addErrorAt(err error, Pos lexer.Location) {
 }
 
 func (p *parser) addError(err error) {
+	if p.index == len(p.tokens) {
+
+	}
+
 	p.addErrorAt(err, p.tokens[p.index].Start)
 }
 
@@ -481,6 +485,9 @@ loop:
 				EscapeHTML: escape,
 			})
 
+		case lexer.TokenEOF:
+			break loop
+
 		default:
 			if val == nil {
 				p.addError(&UnexpectedTokenError{
@@ -620,7 +627,7 @@ func (p *parser) parseMixinCall(start lexer.Location) Node {
 				}, tk.Start)
 			}
 		}
-	} else if tk.Type != lexer.TokenNewLine {
+	} else if tk.Type != lexer.TokenNewLine && tk.Type != lexer.TokenEOF {
 		p.addErrorAt(&UnexpectedTokenError{
 			Got:      tk.Contents,
 			Expected: "a newline or arguments",

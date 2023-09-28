@@ -334,7 +334,7 @@ func (l *Lexer) takeIdentifier(expected string) (found bool) {
 	for {
 		r, eof := l.peek()
 		if eof {
-			return false
+			return !l.isEmpty()
 		}
 
 		// This could be optimized, but it's more legible like this
@@ -649,6 +649,9 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 	for {
 		r, eof := l.peek()
 		if eof {
+			if !l.isEmpty() {
+				l.emit(TokenTagInlineText)
+			}
 			return nil
 		}
 
