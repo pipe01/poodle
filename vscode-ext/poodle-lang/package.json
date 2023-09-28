@@ -9,6 +9,10 @@
   "categories": [
     "Other"
   ],
+  "publisher": "pipe01",
+  "repository": {
+    "url": "https://github.com/pipe01/poodle"
+  },
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
@@ -26,7 +30,7 @@
     "grammars": [
       {
         "language": "poodle",
-        "scopeName": "source.poodle",
+        "scopeName": "text.poodle",
         "path": "./syntaxes/poodle.tmLanguage.json"
       }
     ]
