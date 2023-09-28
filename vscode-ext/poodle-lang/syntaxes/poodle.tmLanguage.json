@@ -1,12 +1,6 @@
 {
-	"information_for_contributors": [
-		"This file has been converted from https://github.com/davidrios/pug-tmbundle/blob/master/Syntaxes/Pug.JSON-tmLanguage",
-		"If you want to provide a fix or improvement, please create a pull request against the original repository.",
-		"Once accepted there, we are happy to receive an update request."
-	],
-	"version": "https://github.com/davidrios/pug-tmbundle/commit/ae1dd60ca4aa4b45617f236d584216cd8d19eecf",
-	"name": "Pug",
-	"scopeName": "text.pug",
+	"name": "Poodle",
+	"scopeName": "text.poodle",
 	"patterns": [
 		{
 			"match": "^(!!!|doctype)(\\s*[a-zA-Z0-9-_]+)?",
@@ -16,23 +10,23 @@
 		{
 			"begin": "^(\\s*)//-",
 			"end": "^(?!(\\1\\s)|\\s*$)",
-			"name": "comment.unbuffered.block.pug",
-			"comment": "Unbuffered (pug-only) comments."
+			"name": "comment.unbuffered.block.poodle",
+			"comment": "Unbuffered (poodle-only) comments."
 		},
 		{
 			"begin": "^(\\s*)//",
 			"end": "^(?!(\\1\\s)|\\s*$)",
-			"name": "string.comment.buffered.block.pug",
+			"name": "string.comment.buffered.block.poodle",
 			"comment": "Buffered (html) comments.",
 			"patterns": [
 				{
 					"captures": {
 						"1": {
-							"name": "invalid.illegal.comment.comment.block.pug"
+							"name": "invalid.illegal.comment.comment.block.poodle"
 						}
 					},
 					"match": "^\\s*(//)(?!-)",
-					"name": "string.comment.buffered.block.pug",
+					"name": "string.comment.buffered.block.poodle",
 					"comment": "Buffered comments inside buffered comments will generate invalid html."
 				}
 			]
@@ -40,11 +34,11 @@
 		{
 			"begin": "<!--",
 			"end": "--\\s*>",
-			"name": "comment.unbuffered.block.pug",
+			"name": "comment.unbuffered.block.poodle",
 			"patterns": [
 				{
 					"match": "--",
-					"name": "invalid.illegal.comment.comment.block.pug"
+					"name": "invalid.illegal.comment.comment.block.poodle"
 				}
 			]
 		},
@@ -63,7 +57,7 @@
 			"begin": "^(\\s*)(script)((\\.$)|(?=[^\\n]*((text|application)/javascript|module).*\\.$))",
 			"beginCaptures": {
 				"2": {
-					"name": "entity.name.tag.pug"
+					"name": "entity.name.tag.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
@@ -97,7 +91,7 @@
 			"begin": "^(\\s*)(style)((\\.$)|(?=[.#(].*\\.$))",
 			"beginCaptures": {
 				"2": {
-					"name": "entity.name.tag.pug"
+					"name": "entity.name.tag.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
@@ -131,11 +125,11 @@
 			"begin": "^(\\s*):(sass)(?=\\(|$)",
 			"beginCaptures": {
 				"2": {
-					"name": "constant.language.name.sass.filter.pug"
+					"name": "constant.language.name.sass.filter.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
-			"name": "source.sass.filter.pug",
+			"name": "source.sass.filter.poodle",
 			"patterns": [
 				{
 					"include": "#tag_attributes"
@@ -149,11 +143,11 @@
 			"begin": "^(\\s*):(scss)(?=\\(|$)",
 			"beginCaptures": {
 				"2": {
-					"name": "constant.language.name.scss.filter.pug"
+					"name": "constant.language.name.scss.filter.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
-			"name": "source.css.scss.filter.pug",
+			"name": "source.css.scss.filter.poodle",
 			"patterns": [
 				{
 					"include": "#tag_attributes"
@@ -167,11 +161,11 @@
 			"begin": "^(\\s*):(less)(?=\\(|$)",
 			"beginCaptures": {
 				"2": {
-					"name": "constant.language.name.less.filter.pug"
+					"name": "constant.language.name.less.filter.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
-			"name": "source.less.filter.pug",
+			"name": "source.less.filter.poodle",
 			"patterns": [
 				{
 					"include": "#tag_attributes"
@@ -185,7 +179,7 @@
 			"begin": "^(\\s*):(stylus)(?=\\(|$)",
 			"beginCaptures": {
 				"2": {
-					"name": "constant.language.name.stylus.filter.pug"
+					"name": "constant.language.name.stylus.filter.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
@@ -202,11 +196,11 @@
 			"begin": "^(\\s*):(coffee(-?script)?)(?=\\(|$)",
 			"beginCaptures": {
 				"2": {
-					"name": "constant.language.name.coffeescript.filter.pug"
+					"name": "constant.language.name.coffeescript.filter.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
-			"name": "source.coffeescript.filter.pug",
+			"name": "source.coffeescript.filter.poodle",
 			"patterns": [
 				{
 					"include": "#tag_attributes"
@@ -220,11 +214,11 @@
 			"begin": "^(\\s*):(uglify-js)(?=\\(|$)",
 			"beginCaptures": {
 				"2": {
-					"name": "constant.language.name.js.filter.pug"
+					"name": "constant.language.name.js.filter.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
-			"name": "source.js.filter.pug",
+			"name": "source.js.filter.poodle",
 			"patterns": [
 				{
 					"include": "#tag_attributes"
@@ -238,31 +232,31 @@
 			"begin": "^(\\s*)((:(?=.))|(:$))",
 			"beginCaptures": {
 				"4": {
-					"name": "invalid.illegal.empty.generic.filter.pug"
+					"name": "invalid.illegal.empty.generic.filter.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
-			"comment": "Generic Pug filter.",
+			"comment": "Generic Poodle filter.",
 			"patterns": [
 				{
 					"begin": "\\G(?<=:)(?=.)",
 					"end": "$",
-					"name": "name.generic.filter.pug",
+					"name": "name.generic.filter.poodle",
 					"patterns": [
 						{
 							"match": "\\G\\(",
-							"name": "invalid.illegal.name.generic.filter.pug"
+							"name": "invalid.illegal.name.generic.filter.poodle"
 						},
 						{
 							"match": "[\\w-]",
-							"name": "constant.language.name.generic.filter.pug"
+							"name": "constant.language.name.generic.filter.poodle"
 						},
 						{
 							"include": "#tag_attributes"
 						},
 						{
 							"match": "\\W",
-							"name": "invalid.illegal.name.generic.filter.pug"
+							"name": "invalid.illegal.name.generic.filter.poodle"
 						}
 					]
 				}
@@ -272,13 +266,13 @@
 			"begin": "^(\\s*)(?:(?=\\.$)|(?:(?=[\\w.#].*?\\.$)(?=(?:(?:(?:(?:(?:#[\\w-]+)|(?:\\.[\\w-]+))|(?:(?:[#!]\\{[^}]*\\})|(?:\\w(?:(?:[\\w:-]+[\\w-])|(?:[\\w-]*)))))(?:(?:#[\\w-]+)|(?:\\.[\\w-]+)|(?:\\((?:[^()\\'\\\"]*(?:(?:\\'(?:[^\\']|(?:(?<!\\\\)\\\\\\'))*\\')|(?:\\\"(?:[^\\\"]|(?:(?<!\\\\)\\\\\\\"))*\\\")))*[^()]*\\))*)*)(?:(?:(?::\\s+)|(?<=\\)))(?:(?:(?:(?:#[\\w-]+)|(?:\\.[\\w-]+))|(?:(?:[#!]\\{[^}]*\\})|(?:\\w(?:(?:[\\w:-]+[\\w-])|(?:[\\w-]*)))))(?:(?:#[\\w-]+)|(?:\\.[\\w-]+)|(?:\\((?:[^()\\'\\\"]*(?:(?:\\'(?:[^\\']|(?:(?<!\\\\)\\\\\\'))*\\')|(?:\\\"(?:[^\\\"]|(?:(?<!\\\\)\\\\\\\"))*\\\")))*[^()]*\\))*)*))*)\\.$)(?:(?:(#[\\w-]+)|(\\.[\\w-]+))|((?:[#!]\\{[^}]*\\})|(?:\\w(?:(?:[\\w:-]+[\\w-])|(?:[\\w-]*)))))))",
 			"beginCaptures": {
 				"2": {
-					"name": "meta.selector.css entity.other.attribute-name.id.css.pug"
+					"name": "meta.selector.css entity.other.attribute-name.id.css.poodle"
 				},
 				"3": {
-					"name": "meta.selector.css entity.other.attribute-name.class.css.pug"
+					"name": "meta.selector.css entity.other.attribute-name.class.css.poodle"
 				},
 				"4": {
-					"name": "meta.tag.other entity.name.tag.pug"
+					"name": "meta.tag.other entity.name.tag.poodle"
 				}
 			},
 			"end": "^(?!(\\1\\s)|\\s*$)",
@@ -286,7 +280,7 @@
 			"patterns": [
 				{
 					"match": "\\.$",
-					"name": "storage.type.function.pug.dot-block-dot"
+					"name": "storage.type.function.poodle.dot-block-dot"
 				},
 				{
 					"include": "#tag_attributes"
@@ -297,10 +291,10 @@
 				{
 					"begin": "^(?=.)",
 					"end": "$",
-					"name": "text.block.pug",
+					"name": "text.block.poodle",
 					"patterns": [
 						{
-							"include": "#inline_pug"
+							"include": "#inline_poodle"
 						},
 						{
 							"include": "#embedded_html"
@@ -324,7 +318,7 @@
 			"comment": "All constructs that generally span a single line starting with any number of white-spaces.",
 			"patterns": [
 				{
-					"include": "#inline_pug"
+					"include": "#inline_poodle"
 				},
 				{
 					"include": "#blocks_and_includes"
@@ -350,11 +344,11 @@
 				{
 					"begin": "\\|",
 					"end": "$",
-					"name": "text.block.pipe.pug",
+					"name": "text.block.pipe.poodle",
 					"comment": "Tag pipe text line.",
 					"patterns": [
 						{
-							"include": "#inline_pug"
+							"include": "#inline_poodle"
 						},
 						{
 							"include": "#embedded_html"
@@ -383,7 +377,7 @@
 							"end": ">|$",
 							"patterns": [
 								{
-									"include": "#inline_pug"
+									"include": "#inline_poodle"
 								},
 								{
 									"include": "#interpolated_value"
@@ -394,7 +388,7 @@
 							]
 						},
 						{
-							"include": "#inline_pug"
+							"include": "#inline_poodle"
 						},
 						{
 							"include": "#embedded_html"
@@ -420,21 +414,21 @@
 		"blocks_and_includes": {
 			"captures": {
 				"1": {
-					"name": "storage.type.import.include.pug"
+					"name": "storage.type.import.include.poodle"
 				},
 				"4": {
-					"name": "variable.control.import.include.pug"
+					"name": "variable.control.import.include.poodle"
 				}
 			},
 			"match": "(extends|include|yield|append|prepend|block( (append|prepend))?)\\s+(.*)$",
-			"name": "meta.first-class.pug",
+			"name": "meta.first-class.poodle",
 			"comment": "Template blocks and includes."
 		},
 		"unbuffered_code": {
 			"begin": "(-|(([a-zA-Z0-9_]+)\\s+=))",
 			"beginCaptures": {
 				"3": {
-					"name": "variable.parameter.javascript.embedded.pug"
+					"name": "variable.parameter.javascript.embedded.poodle"
 				}
 			},
 			"end": "(?=\\])|(({\\s*)?$)",
@@ -456,10 +450,10 @@
 			"match": "(mixin\\s+)([\\w-]+)(?:(\\()\\s*((?:[a-zA-Z_]\\w*\\s*)(?:,\\s*[a-zA-Z_]\\w*\\s*)*)(\\)))?$",
 			"captures": {
 				"1": {
-					"name": "storage.type.function.pug"
+					"name": "storage.type.function.poodle"
 				},
 				"2": {
-					"name": "meta.tag.other entity.name.function.pug"
+					"name": "meta.tag.other entity.name.function.poodle"
 				},
 				"3": {
 					"name": "punctuation.definition.parameters.begin.js"
@@ -476,10 +470,10 @@
 			"begin": "((?:mixin\\s+)|\\+)([\\w-]+)",
 			"beginCaptures": {
 				"1": {
-					"name": "storage.type.function.pug"
+					"name": "storage.type.function.poodle"
 				},
 				"2": {
-					"name": "meta.tag.other entity.name.function.pug"
+					"name": "meta.tag.other entity.name.function.poodle"
 				}
 			},
 			"end": "(?!\\()|$",
@@ -487,7 +481,7 @@
 				{
 					"begin": "(?<!\\))\\(",
 					"end": "\\)",
-					"name": "args.mixin.pug",
+					"name": "args.mixin.poodle",
 					"patterns": [
 						{
 							"include": "#js_parens"
@@ -496,7 +490,7 @@
 							"match": "([^\\s(),=/]+)\\s*=\\s*",
 							"captures": {
 								"1": {
-									"name": "meta.tag.other entity.other.attribute-name.tag.pug"
+									"name": "meta.tag.other entity.other.attribute-name.tag.poodle"
 								}
 							}
 						},
@@ -514,17 +508,17 @@
 			"begin": "(for|if|else if|else|until|while|unless|case)(\\s+|$)",
 			"captures": {
 				"1": {
-					"name": "storage.type.function.pug"
+					"name": "storage.type.function.poodle"
 				}
 			},
 			"end": "$",
-			"name": "meta.control.flow.pug",
-			"comment": "Pug control flow.",
+			"name": "meta.control.flow.poodle",
+			"comment": "Poodle control flow.",
 			"patterns": [
 				{
 					"begin": "",
 					"end": "$",
-					"name": "js.embedded.control.flow.pug",
+					"name": "js.embedded.control.flow.poodle",
 					"patterns": [
 						{
 							"include": "source.js"
@@ -537,20 +531,20 @@
 			"begin": "(each)(\\s+|$)",
 			"captures": {
 				"1": {
-					"name": "storage.type.function.pug"
+					"name": "storage.type.function.poodle"
 				}
 			},
 			"end": "$",
-			"name": "meta.control.flow.pug.each",
+			"name": "meta.control.flow.poodle.each",
 			"patterns": [
 				{
 					"match": "([\\w$_]+)(?:\\s*,\\s*([\\w$_]+))?",
-					"name": "variable.other.pug.each-var"
+					"name": "variable.other.poodle.each-var"
 				},
 				{
 					"begin": "",
 					"end": "$",
-					"name": "js.embedded.control.flow.pug",
+					"name": "js.embedded.control.flow.poodle",
 					"patterns": [
 						{
 							"include": "source.js"
@@ -562,14 +556,14 @@
 		"case_when_paren": {
 			"begin": "\\(",
 			"end": "\\)",
-			"name": "js.when.control.flow.pug",
+			"name": "js.when.control.flow.poodle",
 			"patterns": [
 				{
 					"include": "#case_when_paren"
 				},
 				{
 					"match": ":",
-					"name": "invalid.illegal.name.tag.pug"
+					"name": "invalid.illegal.name.tag.poodle"
 				},
 				{
 					"include": "source.js"
@@ -580,17 +574,17 @@
 			"begin": "(default|when)((\\s+|(?=:))|$)",
 			"captures": {
 				"1": {
-					"name": "storage.type.function.pug"
+					"name": "storage.type.function.poodle"
 				}
 			},
 			"end": "$",
-			"name": "meta.control.flow.pug",
-			"comment": "Pug case conditionals.",
+			"name": "meta.control.flow.poodle",
+			"comment": "Poodle case conditionals.",
 			"patterns": [
 				{
 					"begin": "\\G(?!:)",
 					"end": "(?=:\\s+)|$",
-					"name": "js.embedded.control.flow.pug",
+					"name": "js.embedded.control.flow.poodle",
 					"patterns": [
 						{
 							"include": "#case_when_paren"
@@ -603,7 +597,7 @@
 				{
 					"begin": ":\\s+",
 					"end": "$",
-					"name": "tag.case.control.flow.pug",
+					"name": "tag.case.control.flow.poodle",
 					"patterns": [
 						{
 							"include": "#complete_tag"
@@ -617,7 +611,7 @@
 			"end": "(\\.?$)|(?=:.)",
 			"endCaptures": {
 				"1": {
-					"name": "storage.type.function.pug.dot-block-dot"
+					"name": "storage.type.function.poodle.dot-block-dot"
 				}
 			},
 			"patterns": [
@@ -638,7 +632,7 @@
 				},
 				{
 					"match": "(?<=:)\\w.*$",
-					"name": "invalid.illegal.name.tag.pug"
+					"name": "invalid.illegal.name.tag.poodle"
 				},
 				{
 					"include": "#tag_name"
@@ -659,10 +653,10 @@
 					"match": "((\\.)\\s+$)|((:)\\s*$)",
 					"captures": {
 						"2": {
-							"name": "invalid.illegal.end.tag.pug"
+							"name": "invalid.illegal.end.tag.poodle"
 						},
 						"4": {
-							"name": "invalid.illegal.end.tag.pug"
+							"name": "invalid.illegal.end.tag.poodle"
 						}
 					}
 				},
@@ -677,16 +671,16 @@
 		"tag_name": {
 			"begin": "([#!]\\{(?=.*?\\}))|(\\w(([\\w:-]+[\\w-])|([\\w-]*)))",
 			"end": "(\\G(?<!\\5[^\\w-]))|\\}|$",
-			"name": "meta.tag.other entity.name.tag.pug",
+			"name": "meta.tag.other entity.name.tag.poodle",
 			"patterns": [
 				{
 					"begin": "\\G(?<=\\{)",
 					"end": "(?=\\})",
-					"name": "meta.tag.other entity.name.tag.pug",
+					"name": "meta.tag.other entity.name.tag.poodle",
 					"patterns": [
 						{
 							"match": "{",
-							"name": "invalid.illegal.tag.pug"
+							"name": "invalid.illegal.tag.poodle"
 						},
 						{
 							"include": "source.js"
@@ -697,22 +691,22 @@
 		},
 		"tag_id": {
 			"match": "#[\\w-]+",
-			"name": "meta.selector.css entity.other.attribute-name.id.css.pug"
+			"name": "meta.selector.css entity.other.attribute-name.id.css.poodle"
 		},
 		"tag_classes": {
 			"match": "\\.([^\\w-])?[\\w-]*",
 			"captures": {
 				"1": {
-					"name": "invalid.illegal.tag.pug"
+					"name": "invalid.illegal.tag.poodle"
 				}
 			},
-			"name": "meta.selector.css entity.other.attribute-name.class.css.pug"
+			"name": "meta.selector.css entity.other.attribute-name.class.css.poodle"
 		},
 		"tag_attributes": {
 			"begin": "(\\(\\s*)",
 			"captures": {
 				"1": {
-					"name": "constant.name.attribute.tag.pug"
+					"name": "constant.name.attribute.tag.poodle"
 				}
 			},
 			"end": "(\\))",
@@ -726,7 +720,7 @@
 				},
 				{
 					"match": "!(?!=)",
-					"name": "invalid.illegal.tag.pug"
+					"name": "invalid.illegal.tag.poodle"
 				},
 				{
 					"begin": "=\\s*",
@@ -772,14 +766,14 @@
 			"match": "([^\\s(),=/!]+)\\s*",
 			"captures": {
 				"1": {
-					"name": "entity.other.attribute-name.tag.pug"
+					"name": "entity.other.attribute-name.tag.poodle"
 				}
 			}
 		},
 		"tag_attribute_name_paren": {
 			"begin": "\\(\\s*",
 			"end": "\\)",
-			"name": "entity.other.attribute-name.tag.pug",
+			"name": "entity.other.attribute-name.tag.poodle",
 			"patterns": [
 				{
 					"include": "#tag_attribute_name_paren"
@@ -793,7 +787,7 @@
 			"begin": "(&attributes\\()",
 			"captures": {
 				"1": {
-					"name": "entity.name.function.pug"
+					"name": "entity.name.function.poodle"
 				}
 			},
 			"end": "(\\))",
@@ -801,7 +795,7 @@
 			"patterns": [
 				{
 					"match": "attributes(?=\\))",
-					"name": "storage.type.keyword.pug"
+					"name": "storage.type.keyword.poodle"
 				},
 				{
 					"include": "source.js"
@@ -813,7 +807,7 @@
 			"end": "$",
 			"patterns": [
 				{
-					"include": "#inline_pug"
+					"include": "#inline_poodle"
 				},
 				{
 					"include": "#embedded_html"
@@ -829,7 +823,7 @@
 				}
 			]
 		},
-		"inline_pug_text": {
+		"inline_poodle_text": {
 			"begin": "",
 			"end": "(?=\\])",
 			"patterns": [
@@ -838,12 +832,12 @@
 					"end": "\\]",
 					"patterns": [
 						{
-							"include": "#inline_pug_text"
+							"include": "#inline_poodle_text"
 						}
 					]
 				},
 				{
-					"include": "#inline_pug"
+					"include": "#inline_poodle"
 				},
 				{
 					"include": "#embedded_html"
@@ -859,21 +853,21 @@
 				}
 			]
 		},
-		"inline_pug": {
+		"inline_poodle": {
 			"begin": "(?<!\\\\)(#\\[)",
 			"captures": {
 				"1": {
-					"name": "entity.name.function.pug"
+					"name": "entity.name.function.poodle"
 				},
 				"2": {
-					"name": "entity.name.function.pug"
+					"name": "entity.name.function.poodle"
 				}
 			},
 			"end": "(\\])",
-			"name": "inline.pug",
+			"name": "inline.poodle",
 			"patterns": [
 				{
-					"include": "#inline_pug"
+					"include": "#inline_poodle"
 				},
 				{
 					"include": "#mixin_call"
@@ -881,7 +875,7 @@
 				{
 					"begin": "(?<!\\])(?=[\\w.#])|(:\\s*)",
 					"end": "(?=\\]|(:.)|=|\\s)",
-					"name": "tag.inline.pug",
+					"name": "tag.inline.poodle",
 					"patterns": [
 						{
 							"include": "#tag_name"
@@ -899,11 +893,11 @@
 							"include": "#tag_mixin_attributes"
 						},
 						{
-							"include": "#inline_pug"
+							"include": "#inline_poodle"
 						},
 						{
 							"match": "\\[",
-							"name": "invalid.illegal.tag.pug"
+							"name": "invalid.illegal.tag.poodle"
 						}
 					]
 				},
@@ -915,10 +909,10 @@
 				},
 				{
 					"match": "\\[",
-					"name": "invalid.illegal.tag.pug"
+					"name": "invalid.illegal.tag.poodle"
 				},
 				{
-					"include": "#inline_pug_text"
+					"include": "#inline_poodle_text"
 				}
 			]
 		},
@@ -926,22 +920,22 @@
 			"patterns": [
 				{
 					"match": "(&)([a-zA-Z0-9]+|#[0-9]+|#x[0-9a-fA-F]+)(;)",
-					"name": "constant.character.entity.html.text.pug"
+					"name": "constant.character.entity.html.text.poodle"
 				},
 				{
 					"match": "[<>&]",
-					"name": "invalid.illegal.html_entity.text.pug"
+					"name": "invalid.illegal.html_entity.text.poodle"
 				}
 			]
 		},
 		"interpolated_value": {
 			"begin": "(?<!\\\\)[#!]\\{(?=.*?\\})",
 			"end": "\\}",
-			"name": "string.interpolated.pug",
+			"name": "string.interpolated.poodle",
 			"patterns": [
 				{
 					"match": "{",
-					"name": "invalid.illegal.tag.pug"
+					"name": "invalid.illegal.tag.poodle"
 				},
 				{
 					"include": "source.js"
@@ -950,7 +944,7 @@
 		},
 		"interpolated_error": {
 			"match": "(?<!\\\\)[#!]\\{(?=[^}]*$)",
-			"name": "invalid.illegal.tag.pug"
+			"name": "invalid.illegal.tag.poodle"
 		},
 		"printed_expression": {
 			"begin": "(!?\\=)\\s*",
