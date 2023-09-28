@@ -17,11 +17,11 @@ import (
 )
 
 var (
-	outDir      = kingpin.Flag("out-dir", "Folder to put generated files on").Default(".").String()
+	outDir      = kingpin.Flag("out-dir", "Folder to put generated files on").Short('o').Default(".").String()
 	runImports  = kingpin.Flag("goimports", "Run goimports on each file after it's generated").Default("true").Bool()
 	packageName = kingpin.Flag("pkg", "Package name to set on generated files").Default("main").String()
 	forceExport = kingpin.Flag("export", "Make the first letter of all template names uppercase").Default("true").Bool()
-	watch       = kingpin.Flag("watch", "Watch files for changes and recompile automatically").Bool()
+	watch       = kingpin.Flag("watch", "Watch files for changes and recompile automatically").Short('w').Bool()
 	files       = kingpin.Arg("files", "List of files to compile").Required().ExistingFiles()
 
 	genOpts generator.Options
