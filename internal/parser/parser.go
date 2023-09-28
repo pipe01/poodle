@@ -551,6 +551,30 @@ func (p *parser) parseKeyword() Node {
 
 	case "include":
 		return p.parseInclude(tk.Start)
+
+	case "doctype":
+		tkValue, ok := p.mustTake(lexer.TokenTagInlineText)
+		if !ok {
+			return nil
+		}
+
+		var value string
+
+		switch tkValue.Contents {
+		case "5":
+			value = "html"
+		default:
+			p.addErrorAt(&UnexpectedTokenError{
+				Got:      tkValue.Contents,
+				Expected: "a known doctype shorthand value",
+			}, tkValue.Start)
+			return nil
+		}
+
+		return &NodeDoctype{
+			Pos:   Pos(tk.Start),
+			Value: value,
+		}
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{

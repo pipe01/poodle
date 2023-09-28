@@ -112,6 +112,9 @@ func (c *context) visitNode(n ast.Node) error {
 	case *ast.NodeComment:
 		c.visitNodeComment(n)
 
+	case *ast.NodeDoctype:
+		c.w.WriteLiteralUnescapedf("<!DOCTYPE %s>", n.Value)
+
 	case *ast.NodeTag:
 		return c.visitNodeTag(n)
 

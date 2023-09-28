@@ -28,6 +28,12 @@ type NodeComment struct {
 	Text string
 }
 
+type NodeDoctype struct {
+	Pos
+
+	Value string
+}
+
 type NodeMixinDef struct {
 	Pos
 

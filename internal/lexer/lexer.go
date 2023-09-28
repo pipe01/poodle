@@ -524,6 +524,17 @@ func (l *Lexer) lexLineStart() stateFunc {
 			l.discard()
 
 			return l.lexMixinDef
+
+		case "doctype":
+			l.emit(TokenKeyword)
+
+			l.takeWhitespace()
+			l.discard()
+
+			l.takeUntilNewline()
+			l.emit(TokenTagInlineText)
+
+			return l.lexNewLine
 		}
 	}
 
