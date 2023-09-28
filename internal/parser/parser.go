@@ -207,6 +207,12 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 	tk := p.take()
 
 	switch tk.Type {
+	case lexer.TokenCommentStart:
+		for p.peek().Type == lexer.TokenCommentText {
+			p.take()
+		}
+		return nil
+
 	case lexer.TokenKeyword:
 		p.rewind()
 		return p.parseKeyword()
