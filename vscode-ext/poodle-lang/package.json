@@ -9,9 +9,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onLanguage:poodle"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "languages": [
@@ -22,7 +19,15 @@
         ],
         "extensions": [
           ".poo"
-        ]
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "poodle",
+        "scopeName": "source.poodle",
+        "path": "./syntaxes/poodle.tmLanguage.json"
       }
     ]
   },

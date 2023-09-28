@@ -59,6 +59,7 @@ func main() {
 
 			return handleDocument(context, params.TextDocument.URI)
 		},
+		// TextDocumentSemanticTokensFull: semanticTokensFull,
 	}
 
 	server := server.NewServer(&handler, lsName, false)
@@ -120,6 +121,16 @@ func handleDocument(context *glsp.Context, docURI string) error {
 
 func initialize(context *glsp.Context, params *protocol.InitializeParams) (any, error) {
 	capabilities := handler.CreateServerCapabilities()
+	// capabilities.SemanticTokensProvider = &protocol.SemanticTokensOptions{
+	// 	Legend: protocol.SemanticTokensLegend{
+	// 		TokenTypes: []string{
+	// 			"keyword",
+	// 			"string",
+	// 		},
+	// 	},
+	// 	Range: false,
+	// 	Full:  true,
+	// }
 
 	return protocol.InitializeResult{
 		Capabilities: capabilities,
@@ -142,6 +153,66 @@ func shutdown(context *glsp.Context) error {
 func setTrace(context *glsp.Context, params *protocol.SetTraceParams) error {
 	protocol.SetTraceValue(params.Value)
 	return nil
+}
+
+func semanticTokensFull(context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
+	content, ok := documents[params.TextDocument.URI]
+	if !ok {
+		return nil, fmt.Errorf("document %q not found", params.TextDocument.URI)
+	}
+
+	l := lexer.New([]byte(content), filepath.Base(params.TextDocument.URI))
+
+	tokens := make([]protocol.UInteger, 0)
+
+	var prevPos lexer.Location
+	for {
+		tk, err := l.Next()
+		if err != nil {
+			return nil, fmt.Errorf("get next token: %w", err)
+		}
+		if tk.Type == lexer.TokenEOF {
+			break
+		}
+
+		var tokenType protocol.UInteger
+		shouldSend := true
+
+		switch tk.Type {
+		case lexer.TokenKeyword, lexer.TokenIdentifier:
+			tokenType = 0
+
+		case lexer.TokenAttributeName, lexer.TokenClassName, lexer.TokenQuotedString:
+			tokenType = 1
+
+		default:
+			shouldSend = false
+		}
+
+		if shouldSend {
+			var startDelta protocol.UInteger
+			if tk.Start.Line == prevPos.Line {
+				startDelta = uint32(tk.Start.Column - prevPos.Column)
+			} else {
+				startDelta = uint32(tk.Start.Column)
+			}
+
+			tokens = append(tokens,
+				protocol.UInteger(tk.Start.Line-prevPos.Line),
+				startDelta,
+				protocol.UInteger(len(tk.Contents)),
+				tokenType,
+				0,
+			)
+
+			prevPos = tk.Start
+			prevPos.Column += len(tk.Contents)
+		}
+	}
+
+	return &protocol.SemanticTokens{
+		Data: tokens,
+	}, nil
 }
 
 func ptr[T any](v T) *T {

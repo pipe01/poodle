@@ -383,10 +383,10 @@ func (p *parser) parseTagAttributes() []TagAttribute {
 			break
 		}
 		if tkName.Type != lexer.TokenAttributeName {
-			p.addError(&UnexpectedTokenError{
+			p.addErrorAt(&UnexpectedTokenError{
 				Got:      tkName.Contents,
 				Expected: "an attribute name",
-			})
+			}, tkName.Start)
 			break
 		}
 
@@ -432,10 +432,10 @@ loop:
 
 		default:
 			if val == nil {
-				p.addError(&UnexpectedTokenError{
+				p.addErrorAt(&UnexpectedTokenError{
 					Got:      tk.Contents,
 					Expected: "an attribute value",
-				})
+				}, tk.Start)
 			} else {
 				p.rewind()
 			}

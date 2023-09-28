@@ -701,9 +701,6 @@ func (l *Lexer) lexAttributeEqual() stateFunc {
 }
 
 func (l *Lexer) lexAttributeValue() stateFunc {
-	l.takeWhitespace()
-	l.discard()
-
 	state := l.state
 
 	r, eof := l.take()
