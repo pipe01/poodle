@@ -12,7 +12,8 @@ import (
 type Watcher struct {
 	watchingDirs, watchingFiles map[string]struct{}
 
-	watcher *fsnotify.Watcher
+	regenFiles []string
+	watcher    *fsnotify.Watcher
 }
 
 func NewWatcher() (*Watcher, error) {
@@ -33,9 +34,21 @@ func NewWatcher() (*Watcher, error) {
 
 func (w *Watcher) WatchFile(path string) error {
 	fullPath, _ := filepath.Abs(path)
-	w.watchingFiles[fullPath] = struct{}{}
 
-	dir := filepath.Dir(fullPath)
+	err := w.watchFile(fullPath)
+	if err != nil {
+		return err
+	}
+
+	w.regenFiles = append(w.regenFiles, fullPath)
+	w.RegenFile(fullPath)
+	return nil
+}
+
+func (w *Watcher) watchFile(path string) error {
+	w.watchingFiles[path] = struct{}{}
+
+	dir := filepath.Dir(path)
 	if _, ok := w.watchingDirs[dir]; ok {
 		return nil
 	}
@@ -67,7 +80,10 @@ func (w *Watcher) eventLoop() {
 				continue
 			}
 
-			w.fileModified(fname)
+			log.Printf("file %q modified, recompiling...", event.Name)
+			for _, f := range w.regenFiles {
+				w.RegenFile(f)
+			}
 
 		case err, ok := <-w.watcher.Errors:
 			if !ok {
@@ -78,10 +94,8 @@ func (w *Watcher) eventLoop() {
 	}
 }
 
-func (w *Watcher) fileModified(fullPath string) {
+func (w *Watcher) RegenFile(fullPath string) {
 	name := filepath.Base(fullPath)
-
-	log.Printf("file %q modified, recompiling...", name)
 
 	ws := workspace.New(filepath.Dir(name))
 
@@ -91,6 +105,8 @@ func (w *Watcher) fileModified(fullPath string) {
 	}
 
 	for _, req := range ws.RequestedFiles() {
-		w.WatchFile(req)
+		reqPath, _ := filepath.Abs(req)
+
+		w.watchFile(reqPath)
 	}
 }

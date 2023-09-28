@@ -35,35 +35,31 @@ func main() {
 		ForceExport: *forceExport,
 	}
 
-	reqFiles, err := generateAll()
-	if err != nil {
-		if *watch {
-			log.Printf("failed to generate files: %s", err)
-		} else {
-			kingpin.Fatalf("failed to generate files: %s", err)
-		}
-	}
-
 	if *watch {
-		err := watchFiles(reqFiles)
+		err := watchFiles()
 		if err != nil {
 			kingpin.Fatalf("failed to watch files: %w", err)
+		}
+	} else {
+		err := generateAll()
+		if err != nil {
+			kingpin.Fatalf("failed to generate files: %s", err)
 		}
 	}
 }
 
-func generateAll() (requested []string, err error) {
+func generateAll() error {
 	wd, _ := os.Getwd()
 	ws := workspace.New(wd)
 
 	for _, fname := range *files {
 		_, err := generateFile(ws, fname, genOpts)
 		if err != nil {
-			return ws.RequestedFiles(), fmt.Errorf("load file %q: %s", fname, err)
+			return fmt.Errorf("load file %q: %s", fname, err)
 		}
 	}
 
-	return ws.RequestedFiles(), nil
+	return nil
 }
 
 func generateFile(ws *workspace.Workspace, fname string, genOpts generator.Options) (outPath string, err error) {
@@ -98,13 +94,13 @@ func generateFile(ws *workspace.Workspace, fname string, genOpts generator.Optio
 	return outPath, nil
 }
 
-func watchFiles(files []string) error {
+func watchFiles() error {
 	watcher, err := NewWatcher()
 	if err != nil {
 		return fmt.Errorf("create watcher: %w", err)
 	}
 
-	for _, f := range files {
+	for _, f := range *files {
 		err = watcher.WatchFile(f)
 		if err != nil {
 			return fmt.Errorf("watch file %q: %w", f, err)
