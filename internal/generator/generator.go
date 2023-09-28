@@ -57,13 +57,6 @@ func Visit(w io.Writer, f *ast.File, opts Options) error {
 }
 
 func (c *context) visitFile(f *ast.File) error {
-	for _, n := range f.Nodes {
-		switch n := n.(type) {
-		case *ast.NodeMixinDef:
-			c.mixins[n.Name] = n
-		}
-	}
-
 	importsMap := map[string]struct{}{
 		`"bufio"`: {},
 		`"html"`:  {},
@@ -95,6 +88,14 @@ func (c *context) visitFile(f *ast.File) error {
 
 func (c *context) visitNodes(nodes []ast.Node) error {
 	var err error
+
+	// First pass to find mixin definitions, this way they can be used before being defined
+	for _, n := range nodes {
+		switch n := n.(type) {
+		case *ast.NodeMixinDef:
+			c.mixins[n.Name] = n
+		}
+	}
 
 	for _, n := range nodes {
 		err = c.visitNode(n)
@@ -199,12 +200,12 @@ func (c *context) visitNodeMixinCall(n *ast.NodeMixinCall) error {
 	}
 
 	hasArgs := len(mixinDef.Args) > 0
-	for i, arg := range mixinDef.Args {
-		c.w.WriteVariable(arg.Name, arg.Type, n.Args[i])
-	}
-
 	if hasArgs {
 		c.w.WriteBlockStart()
+	}
+
+	for i, arg := range mixinDef.Args {
+		c.w.WriteVariable(arg.Name, arg.Type, n.Args[i])
 	}
 
 	c.mixinCallStack = append(c.mixinCallStack, mixinDef)
