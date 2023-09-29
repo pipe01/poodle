@@ -784,90 +784,101 @@ func (l *Lexer) lexAfterAttributes() stateFunc {
 	return l.lexAfterTag
 }
 
-func (l *Lexer) lexInterpolationInline(returnTo stateFunc, parseStmts bool) stateFunc {
-	return func() stateFunc {
-		if r, eof := l.peek(); !eof && r == '!' {
-			l.take()
-			l.emit(TokenExclamationPoint)
+func (l *Lexer) takeGoExpression(parseStmts bool, stopOn token.Token) {
+	if r, eof := l.peek(); !eof && r == '!' {
+		l.take()
+		l.emit(TokenExclamationPoint)
+	}
+
+	startByteIndex := l.byteIndex
+	scan, f := l.setupGoScanner()
+
+	var parenCount int
+	var endPos int
+	startsIdent := false
+
+loop:
+	for {
+		pos, tok, lit := scan.Scan()
+
+		if parseStmts && pos == 1 {
+			switch tok {
+			// If the first token is "if", "else" or "for", emit the corresponding start token
+			// and take the rest of the line as the expression after that statement
+			case token.IF, token.ELSE, token.FOR:
+				l.takeUntilByteIndex(startByteIndex + len(lit))
+				l.emit(TokenKeyword)
+
+				l.takeWhitespace()
+				l.discard()
+
+				l.takeUntilNewline()
+				if tok == token.ELSE {
+					l.discard()
+				} else {
+					l.emit(TokenGoExpr)
+				}
+
+				return
+			}
 		}
 
-		startByteIndex := l.byteIndex
-		scan, f := l.setupGoScanner()
-
-		var parenCount int
-		var endPos int
-		startsIdent := false
-
-	loop:
-		for {
-			pos, tok, lit := scan.Scan()
-
-			if parseStmts && pos == 1 {
-				switch tok {
-				// If the first token is "if", "else" or "for", emit the corresponding start token
-				// and take the rest of the line as the expression after that statement
-				case token.IF, token.ELSE, token.FOR:
-					l.takeUntilByteIndex(startByteIndex + len(lit))
-					l.emit(TokenKeyword)
-
-					l.takeWhitespace()
-					l.discard()
-
-					l.takeUntilNewline()
-					if tok == token.ELSE {
-						l.discard()
-					} else {
-						l.emit(TokenGoExpr)
-					}
-
-					return returnTo
-				}
-			}
-
-			switch tok {
-			case token.ILLEGAL:
-				if lit == string(interpolationChar) {
-					l.err = nil
-					break loop
-				}
-
-			case token.IDENT:
-				if parenCount == 0 {
-					if startsIdent {
-						break loop
-					}
-
-					startsIdent = true
-					endPos = int(pos) + len(lit)
-				}
-
-			case token.LPAREN:
-				parenCount++
-			case token.RPAREN:
-				parenCount--
-
-				if parenCount < 0 {
-					endPos = int(pos)
-					break loop
-				}
-				if parenCount == 0 {
-					endPos = int(pos) + 1
-					break loop
-				}
-
-			case token.EOF:
-				if parenCount != 0 {
-					return l.lexError(errors.New("unfinished Go expression"))
-				}
+		switch tok {
+		case token.ILLEGAL:
+			if lit == string(interpolationChar) {
+				l.err = nil
 				break loop
 			}
-		}
 
-		endIndex := int(endPos) - f.Base()
+		case token.IDENT:
+			if parenCount == 0 {
+				if startsIdent {
+					break loop
+				}
 
-		for l.byteIndex < startByteIndex+endIndex {
-			l.take()
+				startsIdent = true
+				endPos = int(pos) + len(lit)
+			}
+
+		case token.LPAREN:
+			parenCount++
+		case token.RPAREN:
+			parenCount--
+
+			if parenCount < 0 {
+				endPos = int(pos)
+				break loop
+			}
+			if parenCount == 0 {
+				endPos = int(pos) + 1
+				break loop
+			}
+
+		case stopOn:
+			if parenCount == 0 {
+				endPos = int(pos)
+				break loop
+			}
+
+		case token.EOF:
+			if parenCount != 0 {
+				l.lexError(errors.New("unfinished Go expression"))
+				return
+			}
+			break loop
 		}
+	}
+
+	endIndex := int(endPos) - f.Base()
+
+	for l.byteIndex < startByteIndex+endIndex {
+		l.take()
+	}
+}
+
+func (l *Lexer) lexInterpolationInline(returnTo stateFunc, parseStmts bool) stateFunc {
+	return func() stateFunc {
+		l.takeGoExpression(parseStmts, 0)
 		l.emit(TokenGoExpr)
 
 		return returnTo
@@ -1015,34 +1026,32 @@ func (l *Lexer) lexMixinCall() stateFunc {
 
 loop:
 	for {
-		r, eof := l.peek()
+		l.takeGoExpression(false, token.COMMA)
+
+		if l.isEmpty() {
+			break
+		}
+
+		l.emit(TokenGoExpr)
+
+		r, eof := l.take()
 		if eof {
 			return nil
 		}
 
 		switch r {
 		case ',':
-			l.emit(TokenGoExpr)
-			l.take()
 			l.emit(TokenComma)
 
 			l.takeWhitespace()
 			l.discard()
 
 		case ')':
-			if !l.isEmpty() {
-				l.emit(TokenGoExpr)
-			}
-			l.take()
 			l.emit(TokenParenClose)
 			break loop
 
-		default:
-			if r == '\n' {
-				return l.lexUnexpected(r, "an argument value")
-			}
-
-			l.take()
+		case '\n':
+			return l.lexUnexpected(r, "an argument value")
 		}
 	}
 
