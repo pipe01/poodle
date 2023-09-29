@@ -72,7 +72,7 @@ func (i *InstructionGo) WriteTo(w io.Writer) {
 	if i.HTMLEscape {
 		fmt.Fprintf(w, "w.WriteString(html.EscapeString(fmt.Sprint(%s)))\n", i.Value)
 	} else {
-		fmt.Fprintf(w, "w.WriteString(fmt.Sprint(%s))\n", i.Value)
+		fmt.Fprintf(w, "fmt.Fprint(w, %s)\n", i.Value)
 	}
 }
 
