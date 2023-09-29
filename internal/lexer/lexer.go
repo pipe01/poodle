@@ -763,7 +763,7 @@ func (l *Lexer) lexAttributeName() stateFunc {
 			continue
 		}
 
-		if !unicode.IsLetter(r) {
+		if r != '-' && r != '_' && r != ':' && r != '.' && !unicode.IsLetter(r) {
 			l.state = state
 
 			if l.isEmpty() {
