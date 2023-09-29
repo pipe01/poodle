@@ -719,6 +719,12 @@ func (l *Lexer) lexAttributeName() stateFunc {
 			return nil
 		}
 
+		if r == '\n' {
+			l.takeWhitespace()
+			l.discard()
+			continue
+		}
+
 		if !unicode.IsLetter(r) {
 			l.state = state
 
