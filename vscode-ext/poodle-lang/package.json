@@ -41,7 +41,8 @@
     "watch": "tsc -watch -p ./",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce pack --no-dependencies"
   },
   "devDependencies": {
     "@types/glob": "^8.1.0",

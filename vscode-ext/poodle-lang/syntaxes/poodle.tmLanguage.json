@@ -54,7 +54,7 @@
 			]
 		},
 		{
-			"begin": "^(\\s*)(script)((\\.$)|(?=[^\\n]*((text|application)/javascript|module).*\\.$))",
+			"begin": "^(\\s*)(script)((:$)|(?=[^\\n]*((text|application)/javascript|module).*:$))",
 			"beginCaptures": {
 				"2": {
 					"name": "entity.name.tag.poodle"
@@ -88,7 +88,7 @@
 			]
 		},
 		{
-			"begin": "^(\\s*)(style)((\\.$)|(?=[.#(].*\\.$))",
+			"begin": "^(\\s*)(style)(:$)",
 			"beginCaptures": {
 				"2": {
 					"name": "entity.name.tag.poodle"
