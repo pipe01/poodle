@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"path/filepath"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/pipe01/poodle/internal/workspace"
@@ -64,6 +65,8 @@ func (w *Watcher) watchFile(path string) error {
 }
 
 func (w *Watcher) eventLoop() {
+	lastModTime := map[string]time.Time{}
+
 	for {
 		select {
 		case event, ok := <-w.watcher.Events:
@@ -79,6 +82,17 @@ func (w *Watcher) eventLoop() {
 			if _, ok := w.watchingFiles[fname]; !ok {
 				continue
 			}
+
+			// Prevent duplicate events in quick succession
+			if lastTime, ok := lastModTime[event.Name]; ok {
+				if time.Now().Sub(lastTime) < 100*time.Millisecond {
+					continue
+				}
+			}
+			lastModTime[event.Name] = time.Now()
+
+			// Wait for file to finish being written to
+			time.Sleep(50 * time.Millisecond)
 
 			log.Printf("file %q modified, recompiling...", event.Name)
 			for _, f := range w.regenFiles {
