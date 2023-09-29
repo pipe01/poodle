@@ -45,10 +45,13 @@ type context struct {
 }
 
 func Visit(w io.Writer, f *ast.File, opts Options) error {
+	outw := &outputWriter{
+		w: w,
+	}
+	defer outw.Close()
+
 	ctx := context{
-		w: &outputWriter{
-			w: w,
-		},
+		w:      outw,
 		opts:   opts,
 		mixins: make(map[string]*ast.NodeMixinDef),
 	}

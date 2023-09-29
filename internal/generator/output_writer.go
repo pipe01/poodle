@@ -11,6 +11,12 @@ import (
 type outputWriter struct {
 	w           io.Writer
 	indentation int
+
+	instrs []Instruction
+}
+
+func (w *outputWriter) add(i Instruction) {
+	w.instrs = append(w.instrs, i)
 }
 
 func (w *outputWriter) indent(delta int) {
@@ -18,37 +24,63 @@ func (w *outputWriter) indent(delta int) {
 }
 
 func (w *outputWriter) writeIndentation() {
-	fmt.Fprint(w.w, strings.Repeat("\t", w.indentation))
+	w.add(&InstructionIndentation{
+		Depth: w.indentation,
+	})
+}
+
+func (w *outputWriter) Close() error {
+	var litBuf strings.Builder
+
+	for i := 0; i < len(w.instrs); i++ {
+		inst := w.instrs[i]
+
+		switch inst := inst.(type) {
+		case *InstructionLiteral:
+			litBuf.WriteString(inst.String)
+			continue
+
+		case *InstructionIndentation:
+			if i == len(w.instrs)-1 {
+				break
+			}
+
+			_, nextIsLit := w.instrs[i+1].(*InstructionLiteral)
+			if nextIsLit {
+				continue
+			}
+		}
+
+		if litBuf.Len() > 0 {
+			writeLiteral(w.w, litBuf.String())
+			litBuf.Reset()
+		}
+
+		inst.WriteTo(w.w)
+	}
+
+	return nil
 }
 
 func (w *outputWriter) WriteFileHeader(pkg string, imports []string) {
-	fmt.Fprintf(w.w, `package %s
-
-import (
-`, pkg)
-
-	for _, i := range imports {
-		fmt.Fprintf(w.w, "	%s\n", i)
-	}
-
-	fmt.Fprint(w.w, ")\n\n")
+	w.add(&InstructionFileHeader{
+		Package: pkg,
+		Imports: imports,
+	})
 }
 
 func (w *outputWriter) WriteFuncHeader(name string, args []string) {
-	fmt.Fprintf(w.w, "func %s(w *bufio.Writer", name)
-
-	if len(args) > 0 {
-		fmt.Fprintf(w.w, ", %s", strings.Join(args, ", "))
-	}
-
-	fmt.Fprint(w.w, ") {\n")
+	w.add(&InstructionWriteFuncHeader{
+		Name: name,
+		Args: args,
+	})
 
 	w.indent(1)
 }
 
 func (w *outputWriter) WriteLiteralUnescaped(str string) {
 	w.writeIndentation()
-	fmt.Fprintf(w.w, "w.WriteString(%q)\n", str)
+	w.add(&InstructionLiteral{String: str})
 }
 
 func (w *outputWriter) WriteLiteralUnescapedf(format string, a ...any) {
@@ -65,12 +97,18 @@ func (w *outputWriter) WriteLiteralEscapedf(format string, a ...any) {
 
 func (w *outputWriter) WriteGoUnescaped(str string) {
 	w.writeIndentation()
-	fmt.Fprintf(w.w, "w.WriteString(fmt.Sprint(%s))\n", str)
+	w.add(&InstructionGo{
+		Value:      str,
+		HTMLEscape: false,
+	})
 }
 
 func (w *outputWriter) WriteGoEscaped(str string) {
 	w.writeIndentation()
-	fmt.Fprintf(w.w, "w.WriteString(html.EscapeString(fmt.Sprint(%s)))\n", str)
+	w.add(&InstructionGo{
+		Value:      str,
+		HTMLEscape: true,
+	})
 }
 
 func (w *outputWriter) WriteStatementStart(indent bool, keyword string, arg string) {
@@ -78,26 +116,26 @@ func (w *outputWriter) WriteStatementStart(indent bool, keyword string, arg stri
 		w.writeIndentation()
 	}
 
-	if arg == "" {
-		fmt.Fprintf(w.w, "%s {\n", keyword)
-	} else {
-		fmt.Fprintf(w.w, "%s %s {\n", keyword, arg)
-	}
+	w.add(&InstructionStatementStart{
+		Keyword: keyword,
+		Arg:     arg,
+	})
 
 	w.indent(1)
 }
 
 func (w *outputWriter) WriteVariable(name, typ, value string) {
 	w.writeIndentation()
-	fmt.Fprintf(w.w, "var %s %s = %s\n", name, typ, value)
-
-	w.writeIndentation()
-	fmt.Fprintf(w.w, "_ = %s\n", name)
+	w.add(&InstructionVariable{
+		Name:  name,
+		Type:  typ,
+		Value: value,
+	})
 }
 
 func (w *outputWriter) WriteBlockStart() {
 	w.writeIndentation()
-	fmt.Fprint(w.w, "{\n")
+	w.add(&InstructionBlockStart{})
 	w.indent(1)
 }
 
@@ -105,11 +143,7 @@ func (w *outputWriter) WriteBlockEnd(newLine bool) {
 	w.indent(-1)
 	w.writeIndentation()
 
-	if newLine {
-		fmt.Fprint(w.w, "}\n")
-	} else {
-		fmt.Fprint(w.w, "} ")
-	}
+	w.add(&InstructionBlockEnd{Newline: newLine})
 }
 
 func (w *outputWriter) WriteGoBlock(contents string) {
@@ -117,13 +151,8 @@ func (w *outputWriter) WriteGoBlock(contents string) {
 
 	for sc.Scan() {
 		w.writeIndentation()
-		w.w.Write(sc.Bytes())
-		w.w.Write([]byte{'\n'})
+		w.add(&InstructionGoLine{
+			Content: sc.Bytes(),
+		})
 	}
-}
-
-func (w *outputWriter) WriteFuncVariableStart(name string, args string) {
-	w.writeIndentation()
-	fmt.Fprintf(w.w, "%s := func(%s) {\n", name, args)
-	w.indent(1)
 }
