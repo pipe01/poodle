@@ -20,6 +20,7 @@ var (
 	runImports  = kingpin.Flag("goimports", "Run goimports on each file after it's generated").Default("true").Bool()
 	packageName = kingpin.Flag("pkg", "Package name to set on generated files").Default("main").String()
 	forceExport = kingpin.Flag("export", "Make the first letter of all template names uppercase").Default("true").Bool()
+	bufioWriter = kingpin.Flag("bufio", "Use a *bufio.Writer as the writer for template functions, otherwise use io.Writer").Default("true").Bool()
 	watch       = kingpin.Flag("watch", "Watch files for changes and recompile automatically").Short('w').Bool()
 	files       = kingpin.Arg("files", "List of files to compile").Required().ExistingFiles()
 
@@ -32,8 +33,9 @@ func main() {
 	*outDir, _ = filepath.Abs(*outDir)
 
 	genOpts = generator.Options{
-		Package:     *packageName,
-		ForceExport: *forceExport,
+		Package:        *packageName,
+		ForceExport:    *forceExport,
+		UseBufioWriter: *bufioWriter,
 	}
 
 	if *watch {

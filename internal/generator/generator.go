@@ -31,8 +31,9 @@ func (e *GeneratorError) At() lexer.Location {
 }
 
 type Options struct {
-	Package     string
-	ForceExport bool
+	Package        string
+	ForceExport    bool
+	UseBufioWriter bool
 }
 
 type context struct {
@@ -62,6 +63,7 @@ func Visit(w io.Writer, f *ast.File, opts Options) error {
 func (c *context) visitFile(f *ast.File) error {
 	importsMap := map[string]struct{}{
 		`"bufio"`: {},
+		`"io"`:    {},
 		`"html"`:  {},
 	}
 	for _, i := range f.Imports {
@@ -78,7 +80,18 @@ func (c *context) visitFile(f *ast.File) error {
 		name = strings.ToUpper(name[:1]) + name[1:]
 	}
 
-	c.w.WriteFuncHeader(name, f.Args)
+	args := f.Args
+	if c.opts.UseBufioWriter {
+		args = append([]string{"w *bufio.Writer"}, args...)
+	} else {
+		args = append([]string{"iw io.Writer"}, args...)
+	}
+
+	c.w.WriteFuncHeader(name, args)
+
+	if !c.opts.UseBufioWriter {
+		c.w.add(&InstructionBufioWriter{})
+	}
 
 	err := c.visitNodes(f.Nodes)
 	if err != nil {

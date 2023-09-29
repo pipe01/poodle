@@ -91,13 +91,18 @@ func (w *Watcher) eventLoop() {
 			}
 			lastModTime[event.Name] = time.Now()
 
-			// Wait for file to finish being written to
+			// Wait for the file to finish being written to
 			time.Sleep(50 * time.Millisecond)
 
 			log.Printf("file %q modified, recompiling...", event.Name)
+			start := time.Now()
+
 			for _, f := range w.regenFiles {
 				w.RegenFile(f)
 			}
+
+			elapsed := time.Now().Sub(start)
+			log.Printf("done in %s", elapsed)
 
 		case err, ok := <-w.watcher.Errors:
 			if !ok {

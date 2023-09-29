@@ -10,6 +10,13 @@ type Instruction interface {
 	WriteTo(w io.Writer)
 }
 
+type InstructionBufioWriter struct {
+}
+
+func (i *InstructionBufioWriter) WriteTo(w io.Writer) {
+	fmt.Fprint(w, "w := bufio.NewWriter(iw); defer w.Flush()\n")
+}
+
 type InstructionIndentation struct {
 	Depth int
 }
@@ -42,10 +49,10 @@ type InstructionWriteFuncHeader struct {
 }
 
 func (i *InstructionWriteFuncHeader) WriteTo(w io.Writer) {
-	fmt.Fprintf(w, "func %s(w *bufio.Writer", i.Name)
+	fmt.Fprintf(w, "func %s(", i.Name)
 
 	if len(i.Args) > 0 {
-		fmt.Fprintf(w, ", %s", strings.Join(i.Args, ", "))
+		w.Write([]byte(strings.Join(i.Args, ", ")))
 	}
 
 	fmt.Fprint(w, ") {\n")
