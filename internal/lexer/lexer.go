@@ -283,15 +283,18 @@ func (l *Lexer) lexUnexpected(got rune, expected string) stateFunc {
 	})
 }
 
-func (l *Lexer) takeIndentation() (depth int) {
+func (l *Lexer) takeIndentation(max int) (depth int) {
 	spaces := 0
 
+loop:
 	for {
-		state := l.state
+		if max >= 0 && (depth >= max || (l.spacesPerLevel > 0 && spaces/l.spacesPerLevel >= max)) {
+			break
+		}
 
-		r, eof := l.take()
+		r, eof := l.peek()
 		if eof {
-			return
+			break
 		}
 
 		switch r {
@@ -302,6 +305,7 @@ func (l *Lexer) takeIndentation() (depth int) {
 			}
 
 			spaces++
+			l.take()
 
 		case '\t':
 			if spaces != 0 {
@@ -310,24 +314,27 @@ func (l *Lexer) takeIndentation() (depth int) {
 			}
 
 			depth++
+			l.take()
 
 		case '\n':
 			spaces = 0
 			depth = 0
+			l.take()
 
 		default:
-			if spaces > 0 {
-				if l.spacesPerLevel == 0 {
-					l.spacesPerLevel = spaces
-				}
-
-				depth = spaces / l.spacesPerLevel
-			}
-
-			l.state = state
-			return
+			break loop
 		}
 	}
+
+	if spaces > 0 {
+		if l.spacesPerLevel == 0 {
+			l.spacesPerLevel = spaces
+		}
+
+		depth = spaces / l.spacesPerLevel
+	}
+
+	return
 }
 
 func (l *Lexer) takeIdentifier(expected string) (found bool) {
@@ -354,7 +361,7 @@ func (l *Lexer) takeIdentifier(expected string) (found bool) {
 }
 
 func (l *Lexer) lexIndentation() stateFunc {
-	l.depth = l.takeIndentation()
+	l.depth = l.takeIndentation(-1)
 	l.discard()
 	return l.lexLineStart
 }
@@ -479,7 +486,8 @@ func (l *Lexer) lexLineStart() stateFunc {
 	}
 
 	tagName := string(l.str)
-	if tagName == "include" {
+	switch tagName {
+	case "include":
 		l.emit(TokenKeyword)
 
 		l.takeWhitespace()
@@ -489,9 +497,23 @@ func (l *Lexer) lexLineStart() stateFunc {
 		l.emit(TokenImportPath)
 
 		return l.lexNewLine
-	}
 
-	if l.depth == 0 {
+	case "doctype":
+		l.emit(TokenKeyword)
+
+		l.takeWhitespace()
+		l.discard()
+
+		l.takeUntilNewline()
+		l.emit(TokenInlineText)
+
+		return l.lexNewLine
+
+	default:
+		if l.depth > 0 {
+			break
+		}
+
 		switch tagName {
 		case "arg":
 			l.emit(TokenKeyword)
@@ -502,7 +524,7 @@ func (l *Lexer) lexLineStart() stateFunc {
 			l.discard()
 
 			l.takeUntilNewline()
-			l.emit(TokenTagInlineText)
+			l.emit(TokenInlineText)
 
 			return l.lexNewLine
 
@@ -524,17 +546,6 @@ func (l *Lexer) lexLineStart() stateFunc {
 			l.discard()
 
 			return l.lexMixinDef
-
-		case "doctype":
-			l.emit(TokenKeyword)
-
-			l.takeWhitespace()
-			l.discard()
-
-			l.takeUntilNewline()
-			l.emit(TokenTagInlineText)
-
-			return l.lexNewLine
 		}
 	}
 
@@ -600,6 +611,10 @@ func (l *Lexer) lexAfterTag() stateFunc {
 	case '#':
 		l.emit(TokenHashtag)
 		return l.lexID
+
+	case ':':
+		l.emit(TokenColon)
+		return l.lexTextBlock
 
 	default:
 		if r == '\n' {
@@ -667,7 +682,7 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 		r, eof := l.peek()
 		if eof {
 			if !l.isEmpty() {
-				l.emit(TokenTagInlineText)
+				l.emit(TokenInlineText)
 			}
 			return nil
 		}
@@ -676,7 +691,7 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 		case r == interpolationChar:
 			// Emit pending inline text, if any
 			if !l.isEmpty() {
-				l.emit(TokenTagInlineText)
+				l.emit(TokenInlineText)
 			}
 
 			// Take first interpolation char
@@ -697,7 +712,7 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 
 		case r == '\n':
 			if !l.isEmpty() {
-				l.emit(TokenTagInlineText)
+				l.emit(TokenInlineText)
 			}
 			return l.lexNewLine
 
@@ -705,6 +720,29 @@ func (l *Lexer) lexTagInlineContent() stateFunc {
 			l.take()
 		}
 	}
+}
+
+func (l *Lexer) lexTextBlock() stateFunc {
+	l.depth++
+
+	minDepth := l.depth
+
+	for {
+		state := l.state
+
+		depth := l.takeIndentation(minDepth)
+		if depth < minDepth {
+			l.state = state
+			break
+		}
+		l.discard()
+
+		l.takeUntilNewline()
+		l.emit(TokenInlineText)
+	}
+
+	l.depth--
+	return l.lexIndentation
 }
 
 func (l *Lexer) lexAttributeName() stateFunc {
@@ -790,7 +828,7 @@ func (l *Lexer) lexAfterAttributes() stateFunc {
 	return l.lexAfterTag
 }
 
-func (l *Lexer) takeGoExpression(parseStmts bool, stopOn token.Token) {
+func (l *Lexer) takeGoExpression(parseStmts bool, stopOn token.Token) (gotStmt bool) {
 	if r, eof := l.peek(); !eof && r == '!' {
 		l.take()
 		l.emit(TokenExclamationPoint)
@@ -825,7 +863,7 @@ loop:
 					l.emit(TokenGoExpr)
 				}
 
-				return
+				return true
 			}
 		}
 
@@ -880,12 +918,16 @@ loop:
 	for l.byteIndex < startByteIndex+endIndex {
 		l.take()
 	}
+
+	return false
 }
 
 func (l *Lexer) lexInterpolationInline(returnTo stateFunc, parseStmts bool) stateFunc {
 	return func() stateFunc {
-		l.takeGoExpression(parseStmts, 0)
-		l.emit(TokenGoExpr)
+		gotStmt := l.takeGoExpression(parseStmts, 0)
+		if !gotStmt {
+			l.emit(TokenGoExpr)
+		}
 
 		return returnTo
 	}
@@ -893,13 +935,13 @@ func (l *Lexer) lexInterpolationInline(returnTo stateFunc, parseStmts bool) stat
 
 func (l *Lexer) lexInterpolationBlock(returnTo stateFunc) stateFunc {
 	return func() stateFunc {
-		startDepth := l.depth
+		startDepth := l.depth + 1
 
 		for {
 			state := l.state
-			depth := l.takeIndentation()
 
-			if depth <= startDepth {
+			depth := l.takeIndentation(startDepth)
+			if depth < startDepth {
 				l.state = state
 				break
 			}

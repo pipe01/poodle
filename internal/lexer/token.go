@@ -7,7 +7,7 @@ type TokenType int
 const (
 	TokenIdentifier TokenType = iota
 	TokenNewLine
-	TokenTagInlineText
+	TokenInlineText
 	TokenImportPath
 
 	TokenParenOpen
@@ -18,6 +18,7 @@ const (
 	TokenComma
 	TokenPlus
 	TokenHashtag
+	TokenColon
 	TokenInterpolationStart
 	TokenExclamationPoint
 	TokenPipe
@@ -45,7 +46,7 @@ func (t TokenType) String() string {
 		return "Identifier"
 	case TokenNewLine:
 		return "Newline"
-	case TokenTagInlineText:
+	case TokenInlineText:
 		return "Inline text"
 	case TokenImportPath:
 		return "Import path"
@@ -65,6 +66,8 @@ func (t TokenType) String() string {
 		return "Plus"
 	case TokenHashtag:
 		return "Hashtag"
+	case TokenColon:
+		return "Colon"
 	case TokenInterpolationStart:
 		return "Interpolation start"
 	case TokenExclamationPoint:

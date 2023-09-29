@@ -31,12 +31,12 @@ func (e *ParserError) At() lexer.Location {
 }
 
 type UnexpectedTokenError struct {
-	Got      string
+	Got      *lexer.Token
 	Expected string
 }
 
 func (e *UnexpectedTokenError) Error() string {
-	return fmt.Sprintf("expected %s, found %q", e.Expected, e.Got)
+	return fmt.Sprintf("expected %s, found %q (%s)", e.Expected, e.Got.Contents, e.Got.Type)
 }
 
 var selfClosingTags = map[string]struct{}{
@@ -99,7 +99,7 @@ func (p *parser) mustTake(typ lexer.TokenType) (tk *lexer.Token, found bool) {
 	tk = p.take()
 	if tk.Type != typ {
 		p.addErrorAt(&UnexpectedTokenError{
-			Got:      tk.Contents,
+			Got:      tk,
 			Expected: typ.String(),
 		}, tk.Start)
 		return nil, false
@@ -265,7 +265,7 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 
 		default:
 			p.addErrorAt(&UnexpectedTokenError{
-				Got:      tkKeyword.Contents,
+				Got:      tkKeyword,
 				Expected: "a valid Go statement or block",
 			}, tkKeyword.Start)
 			return nil
@@ -296,7 +296,7 @@ func (p *parser) parseNode(hasSeenIf bool) Node {
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{
-		Got:      tk.Contents,
+		Got:      tk,
 		Expected: "a valid node",
 	}, tk.Start)
 	return nil
@@ -335,6 +335,34 @@ loop:
 
 		case lexer.TokenParenOpen:
 			tagNode.Attributes = p.parseTagAttributes()
+
+		case lexer.TokenColon:
+			var txt strings.Builder
+
+			for {
+				tkLine := p.peek()
+				if tkLine.Depth == tk.Depth {
+					break
+				}
+
+				if tkLine.Type != lexer.TokenInlineText {
+					p.addErrorAt(&UnexpectedTokenError{
+						Got:      tkLine,
+						Expected: "some block text",
+					}, tkLine.Start)
+					break
+				}
+
+				p.take()
+				txt.WriteString(tkLine.Contents)
+				txt.WriteByte('\n')
+			}
+
+			tagNode.Nodes = append(tagNode.Nodes, &NodeText{
+				Pos:  Pos(tk.Start),
+				Text: ValueLiteral{Contents: txt.String()},
+			})
+			break loop
 
 		case lexer.TokenNewLine, lexer.TokenEOF:
 			break loop
@@ -405,7 +433,7 @@ func (p *parser) parseTagAttributes() []TagAttribute {
 		}
 		if tkName.Type != lexer.TokenAttributeName {
 			p.addErrorAt(&UnexpectedTokenError{
-				Got:      tkName.Contents,
+				Got:      tkName,
 				Expected: "an attribute name",
 			}, tkName.Start)
 			break
@@ -454,7 +482,7 @@ loop:
 		default:
 			if val == nil {
 				p.addErrorAt(&UnexpectedTokenError{
-					Got:      tk.Contents,
+					Got:      tk,
 					Expected: "an attribute value",
 				}, tk.Start)
 			} else {
@@ -475,7 +503,7 @@ loop:
 		tk := p.take()
 
 		switch tk.Type {
-		case lexer.TokenTagInlineText:
+		case lexer.TokenInlineText:
 			val = concatValues(val, ValueLiteral{
 				Pos:      Pos(tk.Start),
 				Contents: tk.Contents,
@@ -508,7 +536,7 @@ loop:
 		default:
 			if val == nil {
 				p.addError(&UnexpectedTokenError{
-					Got:      tk.Contents,
+					Got:      tk,
 					Expected: "an inline value",
 				})
 			} else {
@@ -529,7 +557,7 @@ func (p *parser) parseKeyword() Node {
 
 	switch tk.Contents {
 	case "arg":
-		tkArg, ok := p.mustTake(lexer.TokenTagInlineText)
+		tkArg, ok := p.mustTake(lexer.TokenInlineText)
 		if !ok {
 			return nil
 		}
@@ -553,7 +581,7 @@ func (p *parser) parseKeyword() Node {
 		return p.parseInclude(tk.Start)
 
 	case "doctype":
-		tkValue, ok := p.mustTake(lexer.TokenTagInlineText)
+		tkValue, ok := p.mustTake(lexer.TokenInlineText)
 		if !ok {
 			return nil
 		}
@@ -565,7 +593,7 @@ func (p *parser) parseKeyword() Node {
 			value = "html"
 		default:
 			p.addErrorAt(&UnexpectedTokenError{
-				Got:      tkValue.Contents,
+				Got:      tkValue,
 				Expected: "a known doctype shorthand value",
 			}, tkValue.Start)
 			return nil
@@ -578,7 +606,7 @@ func (p *parser) parseKeyword() Node {
 	}
 
 	p.addErrorAt(&UnexpectedTokenError{
-		Got:      tk.Contents,
+		Got:      tk,
 		Expected: "a known keyword",
 	}, tk.Start)
 	return nil
@@ -619,7 +647,7 @@ func (p *parser) parseMixinDef() Node {
 				break
 			} else if tk.Type != lexer.TokenComma {
 				p.addErrorAt(&UnexpectedTokenError{
-					Got:      tk.Contents,
+					Got:      tk,
 					Expected: "comma or right parenthesis",
 				}, tk.Start)
 				break
@@ -627,7 +655,7 @@ func (p *parser) parseMixinDef() Node {
 		}
 	} else if tk.Type != lexer.TokenNewLine {
 		p.addErrorAt(&UnexpectedTokenError{
-			Got:      tk.Contents,
+			Got:      tk,
 			Expected: "a newline or arguments",
 		}, tk.Start)
 		return nil
@@ -663,14 +691,14 @@ func (p *parser) parseMixinCall(start lexer.Location) Node {
 				break
 			} else if tk.Type != lexer.TokenComma {
 				p.addErrorAt(&UnexpectedTokenError{
-					Got:      tk.Contents,
+					Got:      tk,
 					Expected: "a comma or a right parenthesis",
 				}, tk.Start)
 			}
 		}
 	} else if tk.Type != lexer.TokenNewLine && tk.Type != lexer.TokenEOF {
 		p.addErrorAt(&UnexpectedTokenError{
-			Got:      tk.Contents,
+			Got:      tk,
 			Expected: "a newline or arguments",
 		}, tk.Start)
 		return nil
