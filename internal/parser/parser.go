@@ -440,25 +440,46 @@ func (p *parser) parseTagAttributes() []TagAttribute {
 		}
 
 		var value Value
+		var cond string
 
-		tkEquals := p.peek()
-		if tkEquals.Type == lexer.TokenEquals {
+		tkMark := p.peek()
+		switch tkMark.Type {
+		case lexer.TokenEquals:
 			p.take()
 
 			value = p.parseAttributeValue()
 			if value == nil {
 				continue
 			}
-		} else {
+
+		case lexer.TokenQuestionMark:
+			p.take()
+
+			if _, ok := p.mustTake(lexer.TokenEquals); !ok {
+				continue
+			}
+
+			tkCond, ok := p.mustTake(lexer.TokenGoExpr)
+			if !ok {
+				continue
+			}
+
+			cond = tkCond.Contents
+			value = ValueLiteral{
+				Contents: tkName.Contents,
+			}
+
+		default:
 			value = ValueLiteral{
 				Contents: tkName.Contents,
 			}
 		}
 
 		attrs = append(attrs, TagAttribute{
-			Pos:   Pos(tkName.Start),
-			Name:  tkName.Contents,
-			Value: value,
+			Pos:       Pos(tkName.Start),
+			Name:      tkName.Contents,
+			Value:     value,
+			Condition: cond,
 		})
 	}
 

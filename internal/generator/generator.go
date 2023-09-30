@@ -167,9 +167,17 @@ func (c *context) visitNodeTag(n *ast.NodeTag) error {
 	c.w.WriteLiteralUnescapedf("<%s", n.Name)
 
 	for _, attr := range n.Attributes {
+		if attr.Condition != "" {
+			c.w.WriteStatementStart(true, "if", attr.Condition)
+		}
+
 		c.w.WriteLiteralUnescapedf(` %s="`, attr.Name)
 		c.visitValue(attr.Value)
 		c.w.WriteLiteralUnescaped(`"`)
+
+		if attr.Condition != "" {
+			c.w.WriteBlockEnd(true)
+		}
 	}
 
 	if n.IsSelfClosing {

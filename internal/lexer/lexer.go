@@ -780,13 +780,31 @@ func (l *Lexer) lexAttributeEqual() stateFunc {
 	l.takeWhitespace()
 	l.discard()
 
-	if r, eof := l.peek(); !eof && r != '=' {
-		return l.lexAttributeName
+	r, eof := l.peek()
+	if eof {
+		return nil
 	}
 
-	l.take()
-	l.emit(TokenEquals)
-	return l.lexAttributeValue
+	switch r {
+	case '=':
+		l.take()
+		l.emit(TokenEquals)
+		return l.lexAttributeValue
+
+	case '?':
+		l.take()
+		l.emit(TokenQuestionMark)
+
+		if !l.takeRune('=') {
+			return nil
+		}
+		l.emit(TokenEquals)
+
+		return l.lexInterpolationInline(l.lexAttributeName, false)
+
+	default:
+		return l.lexAttributeName
+	}
 }
 
 func (l *Lexer) lexAttributeValue() stateFunc {

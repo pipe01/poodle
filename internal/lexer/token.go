@@ -20,6 +20,7 @@ const (
 	TokenHashtag
 	TokenColon
 	TokenInterpolationStart
+	TokenQuestionMark
 	TokenExclamationPoint
 	TokenPipe
 
@@ -70,6 +71,8 @@ func (t TokenType) String() string {
 		return "Colon"
 	case TokenInterpolationStart:
 		return "Interpolation start"
+	case TokenQuestionMark:
+		return "Question mark"
 	case TokenExclamationPoint:
 		return "Exclamation point"
 	case TokenPipe:

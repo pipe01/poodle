@@ -106,6 +106,9 @@ type TagAttribute struct {
 
 	Name  string
 	Value Value
+
+	// Only add this attribute if this Go expression evaluates to true
+	Condition string
 }
 
 type Value interface {
