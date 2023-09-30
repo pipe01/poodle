@@ -439,14 +439,20 @@ func (p *parser) parseTagAttributes() []TagAttribute {
 			break
 		}
 
-		_, ok := p.mustTake(lexer.TokenEquals)
-		if !ok {
-			break
-		}
+		var value Value
 
-		value := p.parseAttributeValue()
-		if value == nil {
-			continue
+		tkEquals := p.peek()
+		if tkEquals.Type == lexer.TokenEquals {
+			p.take()
+
+			value = p.parseAttributeValue()
+			if value == nil {
+				continue
+			}
+		} else {
+			value = ValueLiteral{
+				Contents: tkName.Contents,
+			}
 		}
 
 		attrs = append(attrs, TagAttribute{

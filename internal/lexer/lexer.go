@@ -780,10 +780,11 @@ func (l *Lexer) lexAttributeEqual() stateFunc {
 	l.takeWhitespace()
 	l.discard()
 
-	if !l.takeRune('=') {
-		return nil
+	if r, eof := l.peek(); !eof && r != '=' {
+		return l.lexAttributeName
 	}
 
+	l.take()
 	l.emit(TokenEquals)
 	return l.lexAttributeValue
 }
