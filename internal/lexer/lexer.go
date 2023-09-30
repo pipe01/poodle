@@ -643,7 +643,7 @@ func (l *Lexer) lexClassName() stateFunc {
 			return nil
 		}
 
-		if !isASCIILetter(r) && !isASCIIDigit(r) && r != '-' && r != '_' {
+		if !isASCIILetter(r) && !isASCIIDigit(r) && r != '-' && r != '_' && r != '/' {
 			l.state = state
 			l.emit(TokenClassName)
 			break
